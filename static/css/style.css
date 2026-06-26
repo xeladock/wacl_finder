@@ -1,0 +1,193 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, sans-serif;
+    background-color: #f8f9fa;
+}
+
+header {
+    background-color: #1e40af;
+    color: white;
+    padding: 18px 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+header h1 {
+    font-size: 1.85rem;
+    font-weight: 700;
+}
+
+/* Основной контейнер */
+.main-container {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    width: max-content;
+    margin: 5px 0 0 5px;     /* ещё сильнее влево */
+    padding: 0 1px;
+}
+
+.form-card {
+    width: 420px;
+    flex-shrink: 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px;        /* уменьшили отступы внутри карточки */
+    box-sizing: border-box;
+}
+
+.form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.form-label {
+    min-width: 120px;
+    text-align: right;
+    font-weight: 600;
+    color: #374151;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+.input-field {
+    width: 100%         /* Насильно заставляем инпут занять только ширину карточки */
+    box-sizing: border-box;
+}
+
+.input-field:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+/* Чекбоксы */
+/* Контейнер для чекбоксов и кнопок */
+.controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 10px;
+    gap: 40px;
+}
+
+.checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    color: #374151;
+    cursor: pointer;
+}
+
+/* Кнопки справа */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 20px;
+    margin-left: 20px;
+}
+
+.btn-secondary {
+    padding: 5px 10px;
+    background-color: #64748b;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+}
+
+.btn-secondary:hover {
+    background-color: #3b82f6;
+}
+
+.input-field {
+    width: 260px;
+    padding: 12px 16px;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1.05rem;
+    color: #1f2937;
+}
+
+.input-field::placeholder {
+    color: #9ca3af;        /* серый цвет */
+    font-style: italic;    /* наклонный текст */
+}
+
+.input-field:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.ues-row {
+    width: 120px;
+    flex-shrink: 0;
+     /* Задаем четкую ширину для УЭС */
+    height: 100px;
+    flex-shrink: 0; /* Запрещаем ей сжиматься */
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/*    max-width: 520px;
+    margin: 5px 0 0 5px;     /* ещё сильнее влево
+    padding: 0 1px;
+    */
+
+.option-card2 {
+    position: relative;
+
+    width: 180px;
+    min-height: 200px;
+
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+
+    padding: 15px;
+}
+
+.option-title2 {
+    font-weight: 600;
+    color: #374151;
+    font-size: 1.05rem;
+
+    /* Добавляем отступ снизу, чтобы чекбоксы опустились ниже */
+    margin-bottom: 6px;
+    margin-left: -4px;
+    margin-top: -11px;
+}
+
+/* Контейнер с чекбоксами (ЛВС, ЦОД) */
+.option-content2 {
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Расстояние между самими чекбоксами */
+
+    /* ВОТ ЗДЕСЬ двигаем чекбоксы правее относительно заголовка */
+    margin-left: 10px;
+    font-size: 1.05rem;
+    color: #374151;
+}

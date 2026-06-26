@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACL Search Tool</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>🔍 ACL Search Tool</h1>
+    </header>
+
+    <div class="main-container">
+        <div class="form-card">
+
+            <!-- Source IP -->
+            <div class="form-row">
+                <label class="form-label">Source IP:</label>
+                <input type="text"
+                       id="source_ip"
+                       placeholder="any"
+                       class="input-field"
+                       onfocus="this.placeholder=''"
+                       onblur="if(this.value==='') this.placeholder='any'">
+            </div>
+
+<!-- Destination IP -->
+            <div class="form-row">
+                <label class="form-label">Destination IP:</label>
+                <input type="text"
+                       id="dest_ip"
+                       placeholder="any"
+                       class="input-field"
+                       onfocus="this.placeholder=''"
+                       onblur="if(this.value==='') this.placeholder='any'">
+            </div>
+
+<!-- Чекбоксы + Кнопки в одну строку -->
+            <div class="controls-row">
+                <!-- Левая часть - чекбоксы -->
+                <div class="checkboxes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="strict_match">
+                        Строгое соответствие
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="source_or_dest">
+                        Source or Destination
+                    </label>
+                </div>
+<!--                УЭС:  -->
+
+
+
+                <!-- Правая часть - кнопки -->
+                <div class="action-buttons">
+                    <button onclick="resetIPs()" class="btn-secondary">Сброс IP</button>
+                    <button onclick="reverseIPs()" class="btn-secondary">Реверс IP</button>
+                </div>
+            </div>
+
+        </div>
+            <div class="ues-row">
+<div class="option-title2">УЭС:</div>
+    <div class="option-content2">
+        <label class="checkbox-label2">
+            <input type="checkbox" id="ues1"> ЛВС
+        </label>
+        <label class="checkbox-label2">
+            <input type="checkbox" id="ues2"> ЦОД
+        </label>
+    </div>
+    </div>
+
+
+
+    <!-- Ваша существующая форма -->
+
+
+    <script>
+        function resetIPs() {
+            const src = document.getElementById('source_ip');
+            const dst = document.getElementById('dest_ip');
+
+            src.value = '';
+            dst.value = '';
+
+            src.placeholder = 'any';
+            dst.placeholder = 'any';
+        }
+
+        function reverseIPs() {
+            const source = document.getElementById('source_ip');
+            const dest = document.getElementById('dest_ip');
+            const temp = source.value;
+            source.value = dest.value;
+            dest.value = temp;
+        }
+    </script>
+
+</body>
+</html>
