@@ -25,7 +25,7 @@ header h1 {
 .main-container {
     display: flex;
     align-items: stretch;
-    gap: 10px;
+    gap: 10px; /*между фреймами*/
     width: max-content;
     margin: 5px 0 0 5px;     /* ещё сильнее влево */
     padding: 0 1px;
@@ -37,7 +37,7 @@ header h1 {
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    padding: 20px;        /* уменьшили отступы внутри карточки */
+    padding: 15px;        /* уменьшили отступы внутри карточки */
     box-sizing: border-box;
 }
 
@@ -45,8 +45,9 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 5px;
+    margin-bottom: 10px; /*сократить расстояние между titles+inputs*/
+
 }
 
 .form-label {
