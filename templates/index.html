@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ACL Search Tool</title>
+    <title>    ACL Parser</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
     <header>
-        <h1>🔍 ACL Search Tool</h1>
+        <h1>    🔍 ACL Parser v0.14</h1>
     </header>
 
     <div class="main-container">
@@ -65,15 +65,70 @@
             <div class="ues-row">
 <div class="option-title2">УЭС:</div>
     <div class="option-content2">
-        <label class="checkbox-label2">
-            <input type="checkbox" id="ues1"> ЛВС
+        <label class="checkbox-label2"><input type="checkbox" class="ues"> ЛВС</label>
+        <label class="checkbox-label2"><input type="checkbox" class="ues"> ЦОД</label>
+</div>
+        </div>
+
+        <!-- Блок Фильтр по регионам -->
+        <div class="filter-block-region">
+            <div class="filter-title">Фильтр по регионам:</div>
+            <div class="filter-content" id="regions-group">
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> Волга</label>
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> ДВ</label>
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> СЗ</label>
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> Центр</label>
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> КЦ</label>
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> Урал</label>
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> Юг</label>
+        <label class="checkbox-item"><input type="checkbox" class="region-cb"> Сибирь</label>
+<div class="all-checkbox">
+        <label class="checkbox-item">
+            <input type="checkbox" id="all-regions"> Все
         </label>
-        <label class="checkbox-label2">
-            <input type="checkbox" id="ues2"> ЦОД
-        </label>
-    </div>
+
+            </div>
+        </div>
+
     </div>
 
+                <div class="filter-block-vendor">
+            <div class="filter-title-vendor">Фильтр по оборудованию:</div>
+            <div class="filter-content-vendor" id="vendor-group">
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Cisco ASA</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Cisco Firepower</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Cisco IOS</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Cisco IOS XE</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Cisco NX-OS</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> FortiOS</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Huawei</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Eltex</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Eltex ESR</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> HP ProCurve/HPE</label>
+        <label class="checkbox-item-vendor"><input type="checkbox" class="vendor-cb"> Прочие устройства</label>
+<div class="all-checkbox-vendor">
+        <label class="checkbox-item-vendor">
+            <input type="checkbox" id="all-vendors"> Все
+        </label>
+
+            </div>
+        </div>
+
+    </div>
+
+        <div class="search-container">
+                <button onclick="performSearch()" class="btn-search">
+                    🔎 ПОИСК
+                </button>
+            </div>
+
+<div class="results-panel">
+
+        <div id="results-content" class="results-content">
+
+        </div>
+    </div>
+    </div>
 
 
     <!-- Ваша существующая форма -->
@@ -98,6 +153,35 @@
             source.value = dest.value;
             dest.value = temp;
         }
+document.addEventListener('DOMContentLoaded', function() {
+
+        // Логика для регионов
+        const allRegions = document.getElementById('all-regions');
+        if (allRegions) {
+            allRegions.addEventListener('change', function() {
+                const isChecked = this.checked;
+                const checkboxes = document.querySelectorAll('#regions-group .region-cb');
+                checkboxes.forEach(cb => cb.checked = isChecked);
+            });
+        }
+
+        // Логика для вендоров
+        const allVendors = document.getElementById('all-vendors');
+        if (allVendors) {
+            allVendors.addEventListener('change', function() {
+                const isChecked = this.checked;
+                const checkboxes = document.querySelectorAll('#vendor-group .vendor-cb');
+                checkboxes.forEach(cb => cb.checked = isChecked);
+            });
+        }
+
+document.addEventListener('keydown', function(e) {
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        resetIPs();
+    }
+
+    });
     </script>
 
 </body>

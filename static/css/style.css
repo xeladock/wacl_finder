@@ -12,13 +12,16 @@ body {
 header {
     background-color: #1e40af;
     color: white;
-    padding: 18px 20px;
+    padding: 2px 0px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 0 0 12px 12px; /* скругление снизу */
+
 }
 
 header h1 {
-    font-size: 1.85rem;
+    font-size: 1.55rem;
     font-weight: 700;
+    padding-left: 30px;
 }
 
 /* Основной контейнер */
@@ -32,6 +35,7 @@ header h1 {
 }
 
 .form-card {
+    align-self: flex-start;
     width: 420px;
     flex-shrink: 0;
     background: white;
@@ -91,7 +95,7 @@ header h1 {
     gap: 8px;
     font-size: 1.05rem;
     color: #374151;
-    cursor: pointer;
+    /*cursor: pointer;*/
 }
 
 /* Кнопки справа */
@@ -110,7 +114,7 @@ header h1 {
     border: none;
     border-radius: 8px;
     font-size: 1rem;
-    cursor: pointer;
+    /*cursor: pointer;*/
     transition: background-color 0.2s;
     white-space: nowrap;
 }
@@ -192,3 +196,146 @@ header h1 {
     font-size: 1.05rem;
     color: #374151;
 }
+/*фильтр регионов*/
+
+/* Блок "Фильтр по регионам" */
+/* Блоки фильтров (УЗС, Регионы, Оборудование) */
+.filter-block-region {
+    width: 380px;
+    flex-shrink: 0;
+     /* Задаем четкую ширину для УЭС */
+    height: 140px;
+    flex-shrink: 0; /* Запрещаем ей сжиматься */
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.filter-title {
+    font-weight: 600;
+    color: #374151;
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+    margin-left: -4px;
+    margin-top: -11px;
+}
+
+.filter-content {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px 30px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.02rem;
+    color: #374151;
+    /*cursor: pointer;*/
+    white-space: nowrap;
+}
+
+.all-checkbox {
+    margin-top: 12px;
+    padding-top: 0px;
+
+}
+
+
+/*блок вендоров*/
+.filter-block-vendor {
+    position: relative;
+
+    width: 700px;
+    flex-shrink: 0;
+     /* Задаем четкую ширину для УЭС */
+    height: 180px;
+    flex-shrink: 0; /* Запрещаем ей сжиматься */
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.filter-title-vendor {
+    font-weight: 600;
+    color: #374151;
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+    margin-left: -4px;
+    margin-top: -11px;
+}
+
+.filter-content-vendor {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px 30px;
+}
+
+.checkbox-item-vendor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.02rem;
+    color: #374151;
+    /*cursor: pointer;*/
+    white-space: nowrap;
+}
+
+.all-checkbox-vendor {
+    position: absolute;
+    bottom: 20px;           /* расстояние от низа карточки */
+    left: 20px;             /* отступ от левого края */
+}
+
+.search-container {
+    margin-top: 90px;
+    margin-left: -900px;
+    text-align: center;
+}
+
+.btn-search {
+    position: absolute;
+    bottom: 710px;           /* расстояние от низа карточки */
+    left: 865px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px; /*скругление*/
+    padding: 10px 26px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    /*cursor: pointer;*/
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-search:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+/*панель вывода*/
+
+
+/* Панель результатов — ручное позиционирование */
+.results-panel {
+    position: absolute;
+    top: 300px;
+    left: 5px;           /* ← меняй это значение */
+    right: 5px;           /* прижимает к правому краю */
+    bottom: 5px;          /* прижимает к низу */
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+
