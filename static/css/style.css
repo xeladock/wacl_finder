@@ -294,23 +294,23 @@ header h1 {
 }
 
 .search-container {
-    margin-top: 90px;
-    margin-left: -900px;
-    text-align: center;
+    display: flex;
+    justify-content: center; /* Центрирует кнопку на любом мониторе */
+    width: 100%;             /* Занимает всю ширину под карточками */
+    margin-top: -13px;        /* Отступ сверху от карточек */
+    margin-bottom: 20px;     /* Отступ снизу до панели результатов */
 }
 
 .btn-search {
-    position: absolute;
-    bottom: 710px;           /* расстояние от низа карточки */
-    left: 865px;
+    width: max-content;      /* ИСПРАВЛЕНО: Кнопка сохранит свою форму и не сожмется */
     background-color: #2563eb;
     color: white;
     border: none;
-    border-radius: 10px; /*скругление*/
-    padding: 10px 26px;
+    border-radius: 10px;
+    padding: 12px 30px;      /* Аккуратные внутренние отступы */
     font-size: 1.25rem;
     font-weight: 600;
-    /*cursor: pointer;*/
+    cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
@@ -337,6 +337,15 @@ header h1 {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+
+}
+
+#results-content {
+    flex: 1;             /* Занимает всю высоту от top до bottom панели */
+    overflow: hidden;    /* Не дает внутреннему <pre> ломать панель */
+    background: #f8f9fa; /* Переносим красивый серый фон сюда */
+    padding: 15px;       /* Паддинг для красивых отступов текста от краев */
+    box-sizing: border-box;
 }
 
 

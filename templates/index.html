@@ -64,7 +64,8 @@
         </div>
             <div class="ues-row">
 <div class="option-title2">УЭС:</div>
-    <div class="option-content2">
+    <div class="option-content2" id="ues-group" >
+<!--        <div class="filter-content" id="regions-group">-->
         <label class="checkbox-label2"><input type="checkbox" class="ues"> ЛВС</label>
         <label class="checkbox-label2"><input type="checkbox" class="ues"> ЦОД</label>
 </div>
@@ -89,7 +90,6 @@
 
             </div>
         </div>
-
     </div>
 
                 <div class="filter-block-vendor">
@@ -115,7 +115,7 @@
         </div>
 
     </div>
-
+</div>
         <div class="search-container">
                 <button onclick="performSearch()" class="btn-search">
                     🔎 ПОИСК
@@ -153,7 +153,21 @@
             source.value = dest.value;
             dest.value = temp;
         }
-document.addEventListener('DOMContentLoaded', function() {
+
+
+
+document.addEventListener('keydown', function(e) {
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        resetIPs();
+    }
+
+    });
+
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
 
         // Логика для регионов
         const allRegions = document.getElementById('all-regions');
@@ -174,16 +188,88 @@ document.addEventListener('DOMContentLoaded', function() {
                 checkboxes.forEach(cb => cb.checked = isChecked);
             });
         }
-
-
-document.addEventListener('keydown', function(e) {
-if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
-        e.preventDefault();
-        resetIPs();
-    }
-
-    });
+        });
     </script>
+
+    <script>
+async function performSearch() {
+    console.log("performSearch вызвана!");
+    const resultsDiv = document.getElementById('results-content');
+    resultsDiv.innerHTML = '<p class="placeholder-text">Выполняется поиск...</p>';
+
+    // Собираем чекбоксы
+    const ues = [];
+    document.querySelectorAll('#ues-group input[type="checkbox"]:checked').forEach(cb => {
+        ues.push(cb.parentElement.textContent.trim());
+    });
+
+    const regions = [];
+    document.querySelectorAll('#regions-group input[type="checkbox"]:checked').forEach(cb => {
+        regions.push(cb.parentElement.textContent.trim());
+    });
+
+    const vendors = [];
+    document.querySelectorAll('#vendor-group input[type="checkbox"]:checked').forEach(cb => {
+        vendors.push(cb.parentElement.textContent.trim());
+    });
+
+    const data = {
+        source_ip: document.getElementById('source_ip').value.trim() || 'any',
+        dest_ip: document.getElementById('dest_ip').value.trim() || 'any',
+        strict_mode: document.getElementById('strict_match').checked,
+        sod: document.getElementById('source_or_dest').checked,
+        ues: ues,
+        regions: regions,
+        vendors: vendors
+    };
+
+    console.log("Отправляемые данные:", data);   // для отладки
+
+    try {
+        const response = await fetch('/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+if (result.status === "success") {
+    let html = `<pre id="search-pre" style="background:#f8f9fa; padding:1px; border-radius:8px; max-height:670px; overflow:auto;">`;
+    html += result.results.join('\n');
+    html += '</pre>';
+
+    // Создаем наблюдатель за изменениями в DOM
+    const observer = new MutationObserver((mutations, obs) => {
+        const preElement = document.getElementById('search-pre');
+        if (preElement) {
+            // Как только элемент появился и наполнился текстом — скроллим
+            preElement.scrollTop = preElement.scrollHeight;
+
+            // Также плавно двигаем экран к низу этого блока, если он ушел за экран
+            preElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+            obs.disconnect(); // Выключаем наблюдатель, задача выполнена
+        }
+    });
+
+    // Включаем слежку за блоком результатов перед тем, как вставить HTML
+    observer.observe(resultsDiv, { childList: true, subtree: true });
+
+    resultsDiv.innerHTML = html;
+
+            // Дополнительная попытка
+        } else {
+            resultsDiv.innerHTML = `<p style="color:red">Ошибка: ${result.message}</p>`;
+        }
+
+    } catch (err) {
+        resultsDiv.innerHTML = `<p style="color:red">Ошибка соединения: ${err.message}</p>`;
+    }
+}
+    </script>
+
+
 
 </body>
 </html>
