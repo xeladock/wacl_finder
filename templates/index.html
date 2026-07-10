@@ -195,7 +195,13 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
 async function performSearch() {
     console.log("performSearch вызвана!");
     const resultsDiv = document.getElementById('results-content');
-    resultsDiv.innerHTML = '<p class="placeholder-text">Выполняется поиск...</p>';
+    const uesChecked = document.querySelectorAll('#ues-group input[type="checkbox"]:checked').length;
+    if (uesChecked === 0) {
+        alert("❌ Нужно выбрать хотя бы один УЭС!");
+        return;
+    }
+
+
 
     // Собираем чекбоксы
     const ues = [];
@@ -203,15 +209,29 @@ async function performSearch() {
         ues.push(cb.parentElement.textContent.trim());
     });
 
+
     const regions = [];
     document.querySelectorAll('#regions-group input[type="checkbox"]:checked').forEach(cb => {
         regions.push(cb.parentElement.textContent.trim());
     });
+    const regionsChecked = document.querySelectorAll('#regions-group input[type="checkbox"]:checked').length;
+    if (regionsChecked === 0) {
+        alert("❌ Нужно выбрать хотя бы один регион!");
+        return;
+    }
 
     const vendors = [];
     document.querySelectorAll('#vendor-group input[type="checkbox"]:checked').forEach(cb => {
         vendors.push(cb.parentElement.textContent.trim());
     });
+
+    const vendorsChecked = document.querySelectorAll('#vendor-group input[type="checkbox"]:checked').length;
+    if (vendorsChecked === 0) {
+        alert("❌ Нужно выбрать хотя бы одну платформу!");
+        return;
+    }
+
+    resultsDiv.innerHTML = '<p class="placeholder-text">Выполняется поиск...</p>';
 
     const data = {
         source_ip: document.getElementById('source_ip').value.trim() || 'any',
@@ -268,6 +288,11 @@ if (result.status === "success") {
     }
 }
     </script>
+
+     <script>
+
+          </script>
+
 
 
 

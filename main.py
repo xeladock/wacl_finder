@@ -7,9 +7,27 @@ from typing import List
 # Импортируем твой парсер
 from Api_search3 import main as parse_acl_main
 
+PLATFORM_GROUPS = {
+    "Cisco ASA": ["Cisco ASA"],
+    "Cisco Firepower": ["Cisco FXOS"],
+    "Cisco IOS": ["Cisco IOS"],
+    "Cisco IOS XE": ["Cisco IOS XE"],
+    "Cisco NX-OS": ["Cisco NX-OS"],
+    "FortiOS": ["FortiOS"],
+    "Huawei": ["Huawei VRP", "Huawei VRP 2403"],
+    "Eltex":["Eltex"],
+    "Eltex ESR":["Eltex ESR"],
+    "HP ProCurve/HPE":["HPE Comware",'HP ProCurve',"HPE OfficeConnect", "HPE Comware 1910"],
+    "Прочие устройства": [   # всё остальное
+        "B4COM BCOM-OS-DC", "EdgeCore", "IBM_Lenovo Network OS",
+        "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
+    ],
+}
+
 app = FastAPI(title="ACL Search Tool")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 
 class SearchRequest(BaseModel):
@@ -36,6 +54,12 @@ async def search(request: SearchRequest):
         results = []
         regions = ["Все"] if "Все" in request.regions else request.regions
         vendors = ["Все"] if "Все" in request.vendors else request.vendors
+
+        allowed_platforms = []
+        for v in vendors:
+            if v in PLATFORM_GROUPS:
+                allowed_platforms.extend(PLATFORM_GROUPS[v])
+
 
         results.append(f"Выбранные УЭС: {', '.join(request.ues)}")
         results.append(f"Выбранные регионы: {', '.join(regions)}")
@@ -121,15 +145,17 @@ async def search(request: SearchRequest):
 
         else:
             # Обычный режим
-
+            # allowed_platforms=[]
             generator = parse_acl_main(
                 src_ip=request.source_ip,
                 dst_ip=request.dest_ip,
                 allowed_prefixes=request.regions,
-                allowed_platforms=request.vendors,
+                allowed_platforms=allowed_platforms,
                 allowed_ues=request.ues,
                 strict_mode=request.strict_mode
             )
+
+
             search_results = list(generator)
             if search_results:
                 results.extend(search_results)
@@ -152,4 +178,4 @@ async def search(request: SearchRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8083, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8084, reload=True)

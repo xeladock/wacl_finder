@@ -44,6 +44,8 @@ FIX_LABELS = {"Корпоративный Центр": "CE",
     "Сибирь": "SI",}
 
 
+
+
 def region(vv):
     region_name = next(
         (label for label, prefix in PREFIX_LABELS.items() if vv.startswith(prefix))
@@ -53,7 +55,6 @@ def region(vv):
 
 def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False):
     print(allowed_prefixes, allowed_platforms,allowed_ues)
-
 
     if not os.path.exists(output_dir):
         yield  ["❌ Папка с конфигурациями не найдена"]
