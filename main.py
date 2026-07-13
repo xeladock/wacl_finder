@@ -1,8 +1,13 @@
+import asyncio
+import json
+
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List
+
+from starlette.responses import StreamingResponse
 
 # Импортируем твой парсер
 from Api_search3 import main as parse_acl_main
@@ -50,131 +55,90 @@ async def index():
 
 @app.post("/search")
 async def search(request: SearchRequest):
-    try:
-        results = []
-        regions = ["Все"] if "Все" in request.regions else request.regions
-        vendors = ["Все"] if "Все" in request.vendors else request.vendors
+    async def event_generator():
+        try:
+            regions = ["Все"] if "Все" in request.regions else request.regions
+            vendors = ["Все"] if "Все" in request.vendors else request.vendors
 
-        allowed_platforms = []
-        for v in vendors:
-            if v in PLATFORM_GROUPS:
-                allowed_platforms.extend(PLATFORM_GROUPS[v])
+            allowed_platforms = []
+            for v in vendors:
+                if v in PLATFORM_GROUPS:
+                    allowed_platforms.extend(PLATFORM_GROUPS[v])
 
+            yield f"Выбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
+            await asyncio.sleep(0.001)
 
-        results.append(f"Выбранные УЭС: {', '.join(request.ues)}")
-        results.append(f"Выбранные регионы: {', '.join(regions)}")
-        results.append(f"Выбранные платформы: {', '.join(vendors)}\n")
-        # results.append("")
-        if request.sod:
+            # Вспомогательная функция: копит данные в строку и шлет ровно по 10 строк
+            async def stream_from_generator(gen, header_text=None, error_msg_ip_src="any", error_msg_ip_dst="any"):
+                if header_text:
+                    yield header_text + "\n"
+                    await asyncio.sleep(0.001)
 
-            results.extend(["--- Поиск: " + request.source_ip + " → any ---\n"])
-            # Source or Destination mode
-            # Первый поиск
-            if request.source_ip != "any":
-                gen1 = parse_acl_main(
-                    src_ip=request.source_ip,
-                    dst_ip="any",
-                    allowed_prefixes=request.regions,
-                    allowed_platforms=request.vendors,
-                    allowed_ues=request.ues,
-                    strict_mode=request.strict_mode
-                )
-                # search_results = []
-                search_results = list(gen1)
-                if search_results:
-                    results.extend(search_results)
-                    del search_results
+                buffer = ""
+                cnt = 0
+                found_any = False
+
+                for row in gen:
+                    if row:
+
+                        buffer += row + "\n"
+                        cnt += 1
+
+                        if cnt >= 10:  # Ровно по 10 строк накоплено
+                            yield buffer
+                            # Отправляем чистый текст + наш маркер окончания пачки
+                            buffer = ""
+                            cnt = 0
+                            await asyncio.sleep(0.001)  # Форсируем отправку пакета
+
+                if buffer:
+                    yield buffer
+                    await asyncio.sleep(0.001)
+
+                # if not found_any:
+                #     yield f"⭕ Ничего не найдено для {error_msg_ip_src} → {error_msg_ip_dst}\n~~~\n"
+                #     await asyncio.sleep(0.001)
+
+            # Логика запуска
+            if request.sod:
+                if request.source_ip != "any":
+                    gen1 = parse_acl_main(request.source_ip, "any", request.regions, request.vendors, request.ues,
+                                          request.strict_mode)
+                    async for chunk in stream_from_generator(gen1, f"--- Поиск: {request.source_ip} → any ---",
+                                                             request.source_ip, "any"):
+                        yield chunk
                 else:
-                    results.append(f"⭕ Ничего не найдено для {request.source_ip} → {request.dest_ip}")
+                    gen1 = parse_acl_main("any", request.dest_ip, request.regions, request.vendors, request.ues,
+                                          request.strict_mode)
+                    async for chunk in stream_from_generator(gen1, f"--- Поиск: any → {request.dest_ip} ---", "any",
+                                                             request.dest_ip):
+                        yield chunk
+
+                yield "\n--- 🔄 Обратный поиск: any → {request.source_ip} ---\n"
+                await asyncio.sleep(0.001)
+
+                if request.source_ip != "any":
+                    gen2 = parse_acl_main("any", request.source_ip, request.regions, request.vendors, request.ues,
+                                          request.strict_mode)
+                    async for chunk in stream_from_generator(gen2, None, "any", request.source_ip):
+                        yield chunk
+                else:
+                    gen2 = parse_acl_main(request.dest_ip, "any", request.regions, request.vendors, request.ues,
+                                          request.strict_mode)
+                    async for chunk in stream_from_generator(gen2, None, request.dest_ip, "any"):
+                        yield chunk
             else:
-                gen1 = parse_acl_main(
-                    src_ip="any",
-                    dst_ip=request.dest_ip,
-                    allowed_prefixes=request.regions,
-                    allowed_platforms=request.vendors,
-                    allowed_ues=request.ues,
-                    strict_mode=request.strict_mode
-                )
+                generator = parse_acl_main(request.source_ip, request.dest_ip, request.regions, allowed_platforms,
+                                           request.ues, request.strict_mode)
+                async for chunk in stream_from_generator(generator, None, request.source_ip, request.dest_ip):
+                    yield chunk
 
+            yield "\n✅ Поиск завершен.\n"
 
-                results.extend(["--- Поиск: any → " + request.dest_ip + " ---"])
-                search_results = list(gen1)
-                if search_results:
-                    results.extend(search_results)
-                    del search_results
-                else:
-                    results.append(f"⭕ Ничего не найдено для {request.source_ip} → {request.dest_ip}")
+        except Exception as e:
+            yield f"\n❌ Ошибка бэкенда: {str(e)}\n"
 
-            # Разделитель
-            results.extend(["\n--- 🔄 Обратный поиск: any → " + request.source_ip + " ---\n"])
-            # results.append("--- Обратный поиск ---\n")
-
-            # Второй поиск
-            if request.source_ip != "any":
-                gen2 = parse_acl_main(
-                    src_ip="any",
-                    dst_ip=request.source_ip,
-                    allowed_prefixes=request.regions,
-                    allowed_platforms=request.vendors,
-                    allowed_ues=request.ues,
-                    strict_mode=request.strict_mode
-                )
-                search_results = list(gen2)
-                if search_results:
-                    results.extend(search_results)
-                    del search_results
-                else:
-                    results.append(f"⭕ Ничего не найдено для {request.source_ip} → {request.dest_ip}")
-                # results.extend(list(gen2))
-            else:
-                gen2 = parse_acl_main(
-                    src_ip=request.dest_ip,
-                    dst_ip="any",
-                    allowed_prefixes=request.regions,
-                    allowed_platforms=request.vendors,
-                    allowed_ues=request.ues,
-                    strict_mode=request.strict_mode
-                )
-                search_results = list(gen2)
-                if search_results:
-                    results.extend(search_results)
-                    del search_results
-                else:
-                    results.append(f"⭕ Ничего не найдено для {request.source_ip} → {request.dest_ip}")
-                # results.extend(list(gen2))
-
-        else:
-            # Обычный режим
-            # allowed_platforms=[]
-            generator = parse_acl_main(
-                src_ip=request.source_ip,
-                dst_ip=request.dest_ip,
-                allowed_prefixes=request.regions,
-                allowed_platforms=allowed_platforms,
-                allowed_ues=request.ues,
-                strict_mode=request.strict_mode
-            )
-
-
-            search_results = list(generator)
-            if search_results:
-                results.extend(search_results)
-                del search_results
-            else:
-                results.append(f"⭕ Ничего не найдено для {request.source_ip} → {request.dest_ip}")
-            # results = list(generator)
-
-        results.append("\n✅ Поиск завершен.\n")
-
-        return {
-            "status": "success",
-            "results": results,
-            "count": len([r for r in results if r.strip()])
-        }
-
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
+    return StreamingResponse(event_generator(), media_type="text/plain")
 
 if __name__ == "__main__":
     import uvicorn

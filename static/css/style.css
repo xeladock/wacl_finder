@@ -200,6 +200,7 @@ header h1 {
 /*фильтр регионов*/
 
 /* Блок "Фильтр по регионам" */
+
 /* Блоки фильтров (УЗС, Регионы, Оборудование) */
 .filter-block-region {
     width: 380px;
@@ -249,17 +250,17 @@ header h1 {
 /*блок вендоров*/
 .filter-block-vendor {
     position: relative;
-
     width: 700px;
     flex-shrink: 0;
      /* Задаем четкую ширину для УЭС */
-    height: 180px;
+    height: 170px;
     flex-shrink: 0; /* Запрещаем ей сжиматься */
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    padding: 20px;
+    padding: 20px 20px 10px 20px;
     box-sizing: border-box;
+
 }
 
 .filter-title-vendor {
@@ -289,15 +290,16 @@ header h1 {
 
 .all-checkbox-vendor {
     position: absolute;
-    bottom: 20px;           /* расстояние от низа карточки */
-    left: 20px;             /* отступ от левого края */
+    bottom: 10px;           /* расстояние от низа карточки */
+    left: 20px;
+       /* отступ от левого края */
 }
 
 .search-container {
     display: flex;
     justify-content: center; /* Центрирует кнопку на любом мониторе */
     width: 100%;             /* Занимает всю ширину под карточками */
-    margin-top: -13px;        /* Отступ сверху от карточек */
+    margin-top: -20px;        /* Отступ сверху от карточек */
     margin-bottom: 20px;     /* Отступ снизу до панели результатов */
 }
 
@@ -327,7 +329,7 @@ header h1 {
 /* Панель результатов — ручное позиционирование */
 .results-panel {
     position: absolute;
-    top: 300px;
+    top: 295px;
     left: 5px;           /* ← меняй это значение */
     right: 5px;           /* прижимает к правому краю */
     bottom: 5px;          /* прижимает к низу */
@@ -347,5 +349,3 @@ header h1 {
     padding: 15px;       /* Паддинг для красивых отступов текста от краев */
     box-sizing: border-box;
 }
-
-

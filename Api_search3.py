@@ -125,6 +125,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
             # print(k ,v)
             for vv in v:
                 res = CiscoASAParser3.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                # print(res)
                 if res:
                     yield(f"----{k2} {k1} {region(vv)}----")
                     yield(vv + ": \n" + "\n".join(res) + "\n")
