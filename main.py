@@ -80,7 +80,8 @@ async def search(request: SearchRequest):
 
                 for row in gen:
                     if row:
-
+                        if not found_any:  # Сработает вхолостую только ОДИН раз
+                            found_any = True
                         buffer += row + "\n"
                         cnt += 1
 
@@ -95,43 +96,68 @@ async def search(request: SearchRequest):
                     yield buffer
                     await asyncio.sleep(0.001)
 
-                # if not found_any:
-                #     yield f"⭕ Ничего не найдено для {error_msg_ip_src} → {error_msg_ip_dst}\n~~~\n"
-                #     await asyncio.sleep(0.001)
+                if not found_any:
+                    yield f"⭕ Ничего не найдено для {error_msg_ip_src} → {error_msg_ip_dst}\n"
+                    await asyncio.sleep(0.001)
 
             # Логика запуска
+            #нормальный запуск
             if request.sod:
-                if request.source_ip != "any":
-                    gen1 = parse_acl_main(request.source_ip, "any", request.regions, request.vendors, request.ues,
+                # Сценарий 1: Задан только Source IP (Destination IP пустой/any)
+                if request.dest_ip == "any":
+                    tmp_ip = request.source_ip
+
+                    # 1. Прямой поиск: Source IP -> any
+                    gen1 = parse_acl_main(tmp_ip, "any", request.regions, allowed_platforms, request.ues,
                                           request.strict_mode)
-                    async for chunk in stream_from_generator(gen1, f"--- Поиск: {request.source_ip} → any ---\n",
-                                                             request.source_ip, "any"):
-                        yield chunk
-                else:
-                    gen1 = parse_acl_main("any", request.dest_ip, request.regions, request.vendors, request.ues,
-                                          request.strict_mode)
-                    async for chunk in stream_from_generator(gen1, f"--- Поиск: any → {request.dest_ip} ---", "any",
-                                                             request.dest_ip):
+                    async for chunk in stream_from_generator(
+                            gen1,
+                            f"--- Поиск: {tmp_ip} → any ---\n",
+                            tmp_ip,
+                            "any"
+                    ):
                         yield chunk
 
-                yield f"\n--- 🔄 Обратный поиск: any → request.source_ip ---\n"
-
-                await asyncio.sleep(0.001)
-
-                if request.source_ip != "any":
-                    gen2 = parse_acl_main("any", request.source_ip, request.regions, request.vendors, request.ues,
+                    # 2. Обратный поиск: any -> Source IP
+                    gen2 = parse_acl_main("any", tmp_ip, request.regions, allowed_platforms, request.ues,
                                           request.strict_mode)
-                    async for chunk in stream_from_generator(gen2, None, "any", request.source_ip):
+                    async for chunk in stream_from_generator(
+                            gen2,
+                            f"\n--- 🔄 Обратный поиск: any → {tmp_ip} ---\n",
+                            "any",
+                            tmp_ip
+                    ):
                         yield chunk
-                else:
-                    gen2 = parse_acl_main(request.dest_ip, "any", request.regions, request.vendors, request.ues,
+
+                # Сценарий 2: Задан только Destination IP (Source IP пустой/any)
+                elif request.source_ip == "any":
+                    tmp_ip = request.dest_ip
+
+                    # 1. Прямой поиск: any -> Destination IP
+                    gen1 = parse_acl_main("any", tmp_ip, request.regions, allowed_platforms, request.ues,
                                           request.strict_mode)
-                    async for chunk in stream_from_generator(gen2, None, request.dest_ip, "any"):
+                    async for chunk in stream_from_generator(
+                            gen1,
+                            f"--- Поиск: any → {tmp_ip} ---\n",
+                            "any",
+                            tmp_ip
+                    ):
+                        yield chunk
+
+                    # 2. Обратный поиск: Destination IP -> any
+                    gen2 = parse_acl_main(tmp_ip, "any", request.regions, allowed_platforms, request.ues,
+                                          request.strict_mode)
+                    async for chunk in stream_from_generator(
+                            gen2,
+                            f"\n--- 🔄 Обратный поиск: {tmp_ip} → any ---\n",
+                            tmp_ip,
+                            "any"
+                    ):
                         yield chunk
             else:
                 generator = parse_acl_main(request.source_ip, request.dest_ip, request.regions, allowed_platforms,
                                            request.ues, request.strict_mode)
-                async for chunk in stream_from_generator(generator, None, request.source_ip, request.dest_ip):
+                async for chunk in stream_from_generator(generator, f"--- Поиск: {request.source_ip} → {request.dest_ip} ---\n", request.source_ip, request.dest_ip):
                     yield chunk
 
             yield "\n✅ Поиск завершен.\n"

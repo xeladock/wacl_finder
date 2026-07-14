@@ -7,6 +7,10 @@
 body {
     font-family: system-ui, sans-serif;
     background-color: #f8f9fa;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 header {
@@ -328,12 +332,9 @@ header h1 {
 
 /* Панель результатов — ручное позиционирование */
 .results-panel {
-    position: absolute;
-    top: 295px;
-    left: 5px;           /* ← меняй это значение */
-    right: 5px;           /* прижимает к правому краю */
-    bottom: 5px;          /* прижимает к низу */
-    background: white;
+    flex: 1;              /* Говорим панели: займи всё оставшееся место по вертикали */
+    margin: -5px 5px 5px 5px;         /* прижимает к низу */
+    background: #ffffff;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     overflow: hidden;
@@ -341,17 +342,18 @@ header h1 {
     flex-direction: column;
 
 }
+/*выводит "выполняется поиск*/
 
 #results-content {
     flex: 1;             /* Занимает всю высоту от top до bottom панели */
     overflow: hidden;    /* Не дает внутреннему <pre> ломать панель */
-    background: #f8f9fa; /* Переносим красивый серый фон сюда */
+    background: #ffffff; /* Переносим красивый серый фон сюда */
     padding: 15px;       /* Паддинг для красивых отступов текста от краев */
     box-sizing: border-box;
 }
 
 #search-pre {
-    background: #f8f9fa;
+    background: #ffffff;
     padding: 15px 5px 40px 15px;   /* увеличим нижний padding */
     border-radius: 8px;
     max-height: 75vh;

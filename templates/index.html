@@ -291,11 +291,22 @@ async function performSearch() {
         resultsDiv.style.paddingTop = "0";
         resultsDiv.style.paddingBottom = "0";
 
+
         // 2. Создаем и вставляем наш оптимизированный <pre> без лишних просветов
-        // resultsDiv.innerHTML = `<pre id="search-pre" style="background:#f8f9fa; padding:1px; border-radius:8px; max-height:685px; overflow:auto;"></pre>`;
-        resultsDiv.innerHTML = `<pre id="search-pre" style="background: #f8f9fa; padding: 1px; margin: 0; width: 100%; box-sizing: border-box; height: calc(100vh - 320px); min-height: 300px; overflow: auto;
-            white-space: pre; border-radius: 6px 0 0 6px; content-visibility: auto; contain-intrinsic-size: 100px 10000px;"
-        ></pre>`;
+       //  resultsDiv.innerHTML = `<pre id="search-pre" style="background:#f8f9fa; padding:1px; border-radius:8px; max-height:685px; overflow:auto;"></pre>`;
+        resultsDiv.innerHTML = `<pre id="search-pre" style="
+            background: #ffffff;
+            padding: 1px; /* Снизу строго 0px */
+            margin: 0px !important;  /* Жестко убираем дефолтные отступы браузера */
+            width: 100%;
+            box-sizing: border-box;
+            max-height: calc(100vh - 300px); /* Ваша рабочая высота */
+            overflow: auto;
+            white-space: pre;
+            border-radius: 6px 0 0 6px;
+            content-visibility: auto;
+            contain-intrinsic-size: 100px 10000px;
+        "></pre>`;
         const preElement = document.getElementById('search-pre');
 
         // 3. Запускаем чтение сырого текстового потока
