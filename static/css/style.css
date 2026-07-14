@@ -349,3 +349,13 @@ header h1 {
     padding: 15px;       /* Паддинг для красивых отступов текста от краев */
     box-sizing: border-box;
 }
+
+#search-pre {
+    background: #f8f9fa;
+    padding: 15px 5px 40px 15px;   /* увеличим нижний padding */
+    border-radius: 8px;
+    max-height: 75vh;
+    overflow-y: auto;
+    width: 100%;
+    box-sizing: border-box;
+}

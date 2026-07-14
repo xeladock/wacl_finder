@@ -271,7 +271,7 @@ async function performSearch() {
     }
 
     resultsDiv.innerHTML = '<p class="placeholder-text">Выполняется поиск...</p>';
-
+    await new Promise(resolve => setTimeout(resolve, 500));  // ← задержка
     console.log("Отправляемые данные:", data);   // для отладки
 
     try {
@@ -292,8 +292,10 @@ async function performSearch() {
         resultsDiv.style.paddingBottom = "0";
 
         // 2. Создаем и вставляем наш оптимизированный <pre> без лишних просветов
-        resultsDiv.innerHTML = `<pre id="search-pre" style="background:#f8f9fa; padding:1px; border-radius:8px; max-height:670px; overflow:auto;"></pre>`;
-
+        // resultsDiv.innerHTML = `<pre id="search-pre" style="background:#f8f9fa; padding:1px; border-radius:8px; max-height:685px; overflow:auto;"></pre>`;
+        resultsDiv.innerHTML = `<pre id="search-pre" style="background: #f8f9fa; padding: 1px; margin: 0; width: 100%; box-sizing: border-box; height: calc(100vh - 320px); min-height: 300px; overflow: auto;
+            white-space: pre; border-radius: 6px 0 0 6px; content-visibility: auto; contain-intrinsic-size: 100px 10000px;"
+        ></pre>`;
         const preElement = document.getElementById('search-pre');
 
         // 3. Запускаем чтение сырого текстового потока
@@ -302,32 +304,40 @@ async function performSearch() {
 
         let lastScrollTime = 0;
         let textBuffer = ""; // Буфер для сырого текста
+        let isScrollPending = false;
 
-    while (true) {
+        while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
             textBuffer += decoder.decode(value, { stream: true });
 
-            // Режем строго по переносу строки
+            // 1. Быстро проверяем саму строку: заканчивается ли буфер на перенос?
+            const endsWithNewline = textBuffer.endsWith("\n");
+
+            // 2. Режем строку на массив
             const lines = textBuffer.split("\n");
 
-            // Забираем возможный обрубок строки обратно в буфер
-            textBuffer = lines.pop();
+            if (endsWithNewline) {
+                // Если буфер заканчивался на "\n", значит split создал лишний пустой элемент в конце.
+                // Просто удаляем его.
+                lines.pop();
+                textBuffer = "";
+            } else {
+                // Иначе на конце реальный обрубок — забираем его обратно в буфер.
+                textBuffer = lines.pop();
+            }
 
-            if (lines.length > 0) {
-                // Склеиваем гарантированно целые строки обратно
+            // 3. Быстрая проверка наличия элементов без .length
+            if (lines[0] !== undefined) {
                 const readyText = lines.join("\n") + "\n";
-
-                // Моментально отображаем
                 preElement.insertAdjacentText('beforeend', readyText);
 
-                // Ограничиваем частоту скролла, чтобы спасти ЦП от зависания
-                const now = Date.now();
-                if (now - lastScrollTime > 40) {
-                    lastScrollTime = now;
+                if (!isScrollPending) {
+                    isScrollPending = true;
                     requestAnimationFrame(() => {
                         preElement.scrollTop = preElement.scrollHeight;
+                        isScrollPending = false;
                     });
                 }
             }

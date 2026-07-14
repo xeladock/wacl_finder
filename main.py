@@ -65,7 +65,7 @@ async def search(request: SearchRequest):
                 if v in PLATFORM_GROUPS:
                     allowed_platforms.extend(PLATFORM_GROUPS[v])
 
-            yield f"Выбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
+            yield f"\nВыбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
             await asyncio.sleep(0.001)
 
             # Вспомогательная функция: копит данные в строку и шлет ровно по 10 строк
@@ -104,7 +104,7 @@ async def search(request: SearchRequest):
                 if request.source_ip != "any":
                     gen1 = parse_acl_main(request.source_ip, "any", request.regions, request.vendors, request.ues,
                                           request.strict_mode)
-                    async for chunk in stream_from_generator(gen1, f"--- Поиск: {request.source_ip} → any ---",
+                    async for chunk in stream_from_generator(gen1, f"--- Поиск: {request.source_ip} → any ---\n",
                                                              request.source_ip, "any"):
                         yield chunk
                 else:
@@ -114,7 +114,8 @@ async def search(request: SearchRequest):
                                                              request.dest_ip):
                         yield chunk
 
-                yield "\n--- 🔄 Обратный поиск: any → {request.source_ip} ---\n"
+                yield f"\n--- 🔄 Обратный поиск: any → request.source_ip ---\n"
+
                 await asyncio.sleep(0.001)
 
                 if request.source_ip != "any":
