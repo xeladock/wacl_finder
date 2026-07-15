@@ -1,13 +1,16 @@
 import asyncio
-import json
+import jinja2
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List
+from fastapi.templating import Jinja2Templates
 
 from starlette.responses import StreamingResponse
+
+
 
 # Импортируем твой парсер
 from Api_search3 import main as parse_acl_main
@@ -52,6 +55,9 @@ async def index():
     with open("templates/index.html", encoding="utf-8") as f:
         return f.read()
 
+@app.get("/og-viewer")
+async def read_og_viewer():
+    return FileResponse("static/html/og_viewer.html")
 
 @app.post("/search")
 async def search(request: SearchRequest):

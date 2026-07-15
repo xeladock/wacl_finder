@@ -1,3 +1,9 @@
+html, body {
+    /* Минимальная ширина всей страницы должна быть не меньше вашей формы + запас под кнопки */
+    min-width: 1900px !important; /* Настройте это число (например, 850px или 900px), чтобы влезли и форма, и кнопки справа */
+    overflow-x: auto !important;  /* Позволяет появляться горизонтальной прокрутке */
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -31,10 +37,13 @@ header h1 {
 
 /* Основной контейнер */
 .main-container {
+    position: relative;
     display: flex;
     align-items: stretch;
     gap: 10px; /*между фреймами*/
-    width: max-content;
+    width: 650px !important;
+    min-width: 650px !important;
+    box-sizing: border-box;
     margin: 5px 0 0 5px;     /* ещё сильнее влево */
     padding: 0 1px;
 }
@@ -256,7 +265,6 @@ header h1 {
     position: relative;
     width: 700px;
     flex-shrink: 0;
-     /* Задаем четкую ширину для УЭС */
     height: 170px;
     flex-shrink: 0; /* Запрещаем ей сжиматься */
     background: white;
@@ -296,15 +304,19 @@ header h1 {
     position: absolute;
     bottom: 10px;           /* расстояние от низа карточки */
     left: 20px;
+
        /* отступ от левого края */
 }
 
 .search-container {
-    display: flex;
-    justify-content: center; /* Центрирует кнопку на любом мониторе */
-    width: 100%;             /* Занимает всю ширину под карточками */
-    margin-top: -20px;        /* Отступ сверху от карточек */
-    margin-bottom: 20px;     /* Отступ снизу до панели результатов */
+    position: relative;     /* Обязательно: опорная точка для кнопки сохранения */
+    display: block;         /* ИСПРАВЛЕНО: убираем flex, чтобы избежать конфликтов */
+    text-align: center;     /* ИСПРАВЛЕНО: это гарантированно поставит кнопку "Поиск" строго по центру экрана */
+    width: 100%;
+    margin-top: -25px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+    padding: 4px;
 }
 
 .btn-search {
@@ -319,6 +331,9 @@ header h1 {
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    display: block;
+    margin-left: 850px !important; /* Подберите этот отступ (примерно половина от 650px минус ширина кнопки) */
+    margin-right: auto !important;
 }
 
 .btn-search:hover {
@@ -360,4 +375,124 @@ header h1 {
     overflow-y: auto;
     width: 100%;
     box-sizing: border-box;
+}
+
+.btn-search {
+    background-color: #2563eb;
+    padding: 14px 40px;
+    font-size: 1.25rem;
+}
+
+
+.download-container {
+    position: absolute;     /* Вырываем из потока */
+    right: 5px;             /* Сдвигаем в самый правый край */
+    top: 40px;               /* Центрируем по высоте */
+    transform: translateY(-50%); /* Идеальное выравнивание по высоте */
+    margin: 0;
+    padding: 0;
+    display: block;
+
+}
+
+/* Кнопка Поиск — большая */
+
+
+.btn-download {
+    width: 180px !important;
+    min-width: 180px !important;
+    display: inline-block;
+    padding: 11px 24px;
+    font-size: 1.05rem;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    outline: none;
+}
+
+.btn-download:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+/**/
+
+.og-container {
+    position: absolute;     /* Вырываем из потока */
+    right: 55px;             /* Сдвигаем в самый правый край */
+    top: -160px;               /* Центрируем по высоте */
+    transform: translateY(-50%); /* Идеальное выравнивание по высоте */
+    margin: 0;
+    padding: 0;
+    display: block;
+
+}
+
+/* Кнопка Поиск — большая */
+
+
+.og-viewer {
+    padding: 11px 24px;
+    font-size: 1.05rem;
+    background-color: #5563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 30px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    outline: none;
+}
+
+.og-viewer:hover {
+    background-color: #5d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.nb-container {
+    position: absolute;     /* Вырываем из потока */
+    right: 55px;             /* Сдвигаем в самый правый край */
+    top: -100px;               /* Центрируем по высоте */
+    transform: translateY(-50%); /* Идеальное выравнивание по высоте */
+    margin: 0;
+    padding: 0;
+    display: block;
+
+}
+
+/* Кнопка Поиск — большая */
+
+
+.nb-viewer {
+    padding: 11px 24px;
+    font-size: 1.05rem;
+    background-color: #5563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 30px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    outline: none;
+}
+
+.nb-viewer:hover {
+    background-color: #5d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
 }

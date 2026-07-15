@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>    ACL Parser</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/og_viewer.css">
 </head>
 <body>
 
@@ -63,12 +64,12 @@
 
         </div>
             <div class="ues-row">
-<div class="option-title2">УЭС:</div>
-    <div class="option-content2" id="ues-group" >
-<!--        <div class="filter-content" id="regions-group">-->
-        <label class="checkbox-label2"><input type="checkbox" class="ues"> ЛВС</label>
-        <label class="checkbox-label2"><input type="checkbox" class="ues"> ЦОД</label>
-</div>
+        <div class="option-title2">УЭС:</div>
+            <div class="option-content2" id="ues-group" >
+        <!--        <div class="filter-content" id="regions-group">-->
+                <label class="checkbox-label2"><input type="checkbox" class="ues"> ЛВС</label>
+                <label class="checkbox-label2"><input type="checkbox" class="ues"> ЦОД</label>
+    </div>
         </div>
 
         <!-- Блок Фильтр по регионам -->
@@ -114,13 +115,38 @@
             </div>
         </div>
 
+
     </div>
+
 </div>
+
         <div class="search-container">
-                <button onclick="performSearch()" class="btn-search">
-                    🔎 ПОИСК
+            <!-- Кнопка Поиск (по центру) -->
+            <button onclick="performSearch()" class="btn-search">
+                🔎 ПОИСК
+            </button>
+
+        <div class="og-container">
+        <button onclick="openOgViewer()" class="og-viewer">
+                📁 OG Viewer
+            </button>
+        </div>
+                       <div class="nb-container">
+                <button onclick="downloadResult()" class="nb-viewer">
+                    NB Viewer
                 </button>
             </div>
+
+
+            <!-- Кнопка Скачать (вырвем из потока и прижмем вправо) -->
+            <div class="download-container">
+                <button onclick="downloadResult()" class="btn-download">
+                    💾 Сохранить в файл
+                </button>
+            </div>
+
+        </div>
+
 
 <div class="results-panel">
 
@@ -128,11 +154,31 @@
 
         </div>
     </div>
-    </div>
 
+    <script src="/static/js/og_viewer.js"></script>
 
     <!-- Ваша существующая форма -->
 
+
+
+    <script>
+function openOgViewer() {
+    // Рассчитываем координаты, чтобы окно открылось ровно по центру экрана
+    const width = 680;
+    const height = 730;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    const uniqueWindowName = 'OGViewerWindow_' + Date.now();
+
+    // Открываем окно в режиме pop-up с заданными размерами
+    window.open(
+        '/og-viewer',
+       /* 'OGViewerWindow',*/
+       uniqueWindowName,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
+    );
+}
+</script>
 
     <script>
         function resetIPs() {
@@ -397,8 +443,31 @@ async function performSearch() {
 }
           </script>
 
+ <script>
+    function downloadResult() {
+        const resultsDiv = document.getElementById('results-content');
+        const pre = resultsDiv.querySelector('pre');
+
+        if (!pre) {
+            alert("Нет результатов для сохранения!");
+            return;
+        }
+
+        const text = pre.textContent || pre.innerText;
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `acl_search_result_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+      </script>
 
 
-
+<script src="/static/js/og_viewer.js"></script>
 </body>
 </html>

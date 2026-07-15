@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object-Group Viewer</title>
+    <!-- Подключаем базовые стили инпутов и новую тему для этой страницы -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/og_viewer.css">
+</head>
+<body class="og-page-body">
+
+    <div class="og-main-card">
+        <h2>📁 Object-Group Viewer</h2>
+
+        <div class="og-form">
+            <!-- Строка: Устройство -->
+            <div class="og-field-row">
+                <label class="og-label">Устройство:</label>
+                <input type="text" id="og-device" class="input-field og-input" placeholder="Имя устройства...">
+                <button onclick="clearOGField('og-device')" class="btn-del">del</button>
+            </div>
+
+            <!-- Строка: Object-Group -->
+            <div class="og-field-row">
+                <label class="og-label">Object-group:</label>
+                <input type="text" id="og-name" class="input-field og-input" placeholder="Название OG...">
+                <button onclick="clearOGField('og-name')" class="btn-del">del</button>
+            </div>
+
+            <!-- Строка: IP / Network -->
+            <div class="og-field-row">
+                <label class="og-label">IP / Network:</label>
+                <input type="text" id="og-ip" class="input-field og-input" placeholder="any">
+                <button onclick="clearOGField('og-ip')" class="btn-del">del</button>
+            </div>
+
+            <!-- Кнопка Очистить всё -->
+            <div class="og-field-row og-clear-all-row">
+                <button onclick="clearAllOGFields()" class="btn-del-all">del all</button>
+            </div>
+        </div>
+
+        <!-- Кнопка Поиск -->
+        <div class="og-search-container">
+            <button onclick="performOGSearch()" class="btn btn-search og-btn-search">🔎 Поиск</button>
+        </div>
+
+        <!-- Поле вывода результатов -->
+        <div class="og-results-panel">
+            <div id="og-results-content">
+                <p class="placeholder-text">Результаты поиска появятся здесь...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем логику, которая будет работать внутри этой вкладки -->
+    <script src="/static/js/og_viewer.js"></script>
+</body>
+</html>
