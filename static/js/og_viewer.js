@@ -18,38 +18,84 @@ function clearAllOGFields() {
 
 // Поиск внутри Object-Group
 async function performOGSearch() {
-    const device = document.getElementById('og-device').value.trim();
-    const ogName = document.getElementById('og-name').value.trim();
-    const ip = document.getElementById('og-ip').value.trim() || 'any';
+    console.log("Кнопка 'Поиск' в OG Viewer успешно нажата!");
 
-    if (!device) {
-        alert("❌ Укажите имя устройства!");
-        return;
-    }
-    if (!ogName) {
-        alert("❌ Укажите название Object-Group!");
-        return;
-    }
-
+    // Получаем элементы из вашей HTML-верстки по правильным ID
+    const deviceField = document.getElementById('og-device');
+    const groupField = document.getElementById('og-name');
+    const ipField = document.getElementById('og-ip');
     const resultsContent = document.getElementById('og-results-content');
-    resultsContent.innerHTML = '<p class="placeholder-text" style="margin-top: 80px;">Выполняется поиск в Object-Group...</p>';
+
+    // Проверяем, что JS видит элементы на странице
+    if (!deviceField || !groupField || !ipField || !resultsContent) {
+        console.error("Ошибка: Одно из полей или панель результатов не найдены в HTML!");
+        return;
+    }
+
+    const device = deviceField.value.trim();
+    const group = groupField.value.trim();
+    const ip = ipField.value.trim();
+
+    console.log("Данные из полей:", { device, group, ip });
+
+    // Показываем индикатор загрузки
+    resultsContent.innerHTML = '<div class="placeholder-text">Выполняется поиск...</div>';
 
     try {
-        // Имитация бэкенд-запроса к вашему Python-серверу
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Запрос идет на наш роутер FastAPI в файле og_viewer.py
+        const response = await fetch('/api/og/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ device, group, ip })
+        });
 
+        const data = await response.json();
+
+        // Обрабатываем ошибки валидации от сервера
+        if (!response.ok) {
+            resultsContent.innerHTML = `
+                <div style="color: #ef4444; font-weight: 600; padding: 15px;">
+                    Ошибка: ${data.detail || 'Произошла ошибка при поиске'}
+                </div>
+            `;
+            return;
+        }
+
+        // Очищаем панель и выводим реальные данные
+        resultsContent.innerHTML = '';
+
+        const preElement = document.createElement('pre');
+        preElement.id = 'og-search-pre';
+
+        // Бежим по массиву результатов из Python-парсера
+        data.results.forEach(item => {
+            const span = document.createElement('span');
+            span.textContent = item.text + '\n';
+
+            // Если элемент — это совпавший IP, делаем его жирным
+            if (item.bold) {
+                span.style.setProperty('font-weight', 'bold', 'important');
+    // Принудительно красим в зеленый с наивысшим приоритетом
+                span.style.setProperty('color', '#10b981', 'important');
+            }
+
+            if (item.italic) {
+                span.style.setProperty('font-style', 'italic', 'important');
+                span.style.setProperty('color', '#10b981', 'important');
+            }
+            preElement.appendChild(span);
+        });
+
+        resultsContent.appendChild(preElement);
+
+    } catch (error) {
         resultsContent.innerHTML = `
-            <pre id="og-search-pre">[РЕЗУЛЬТАТ ПОИСКА]
-Устройство: ${device}
-Группа: ${ogName}
-Искомый IP: ${ip}
-
-object-group network ${ogName}
- network-object host 10.20.30.40
- network-object 192.168.1.0 255.255.255.0
-            </pre>
+            <div style="color: #ef4444; font-weight: 600; padding: 15px;">
+                Ошибка: Не удалось связаться с сервером.
+            </div>
         `;
-    } catch (err) {
-        resultsContent.innerHTML = `<p style="color:red; text-align:center; margin-top: 80px;">Ошибка: ${err.message}</p>`;
+        console.error('Ошибка OG Fetch:', error);
     }
 }

@@ -415,6 +415,13 @@ async function performSearch() {
     } catch (err) {
         resultsDiv.innerHTML = `<p style="color:red">Ошибка соединения: ${err.message}</p>`;
     }
+    const response = await fetch('/api/og/search', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ device, group, ip })
+});
 }
     </script>
 

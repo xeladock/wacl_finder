@@ -3,7 +3,7 @@
 .og-main-card {
     background: #f8fafc;
     width: 100vw;         /* Растягиваем ровно на ширину окна */
-    height: 100vh;        /* Растягиваем ровно на высоту окна */
+    height: 100vh !important;        /* Растягиваем ровно на высоту окна */
     margin: 0 !important; /* Убираем любые внешние отступы */
     border-radius: 0;     /* (Опционально) Убираем скругление углов карточки, */
                           /* так как она теперь прижата к краям окна */
@@ -12,6 +12,50 @@
     /* Сохраняем внутренние отступы, чтобы элементы не прижимались к краям экрана */
     padding: 20px;
     box-sizing: border-box;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+
+}
+
+html, body, .og-main-card {
+    overflow: hidden !important;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.og-main-card::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+
+
+/*
+  ЭТИМ ПРАВИЛОМ мы говорим браузеру:
+  "Если пользователь сжал окно меньше 600px по ширине или 680px по ввысоте —
+  верни ему полосы прокрутки, чтобы он мог дотянуться до интерфейса!"
+
+   html, body, .og-main-card {
+
+scrollbar-width: none !important; /* Firefox */
+
+/*-ms-overflow-style: none !important; /* IE/Edge */
+
+}
+*/
+@media (max-width: 680px), (max-height: 730px) {
+    html, body, .og-main-card {
+        scrollbar-width: none !important; /* Firefox */
+        -ms-overflow-style: none !important; /* IE/Edge */ /* Возвращаем скролл при критическом сжатии */
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    .og-main-card::-webkit-scrollbar {
+        display: block !important; /* Показываем скроллбар в Chrome/Edge */
+        width: 8px !important;
+        height: 8px !important;
+    }
 }
 
 .og-main-card h2 {
@@ -74,7 +118,7 @@
 }
 
 .btn-del-all {
-    padding: 8px 16px;
+    padding: 10px 14px;
     background-color: #374151;
     color: white;
     border: none;
@@ -82,23 +126,38 @@
     cursor: pointer;
     font-weight: 600;
     font-size: 0.9rem;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
 }
 
 .btn-del-all:hover {
     background-color: #FF0000;
+    color: white !important;
+    border-color: #fca5a5;
+
 }
 
 /* Контейнер кнопки поиска */
 .og-search-container {
-    display: flex;
-    justify-content: center;
-    margin: 10px 10;
+    display: block !important;    /* Убираем Flexbox полностью, чтобы исключить конфликты */
+   /* Строго ширина вашей формы */
+    min-width: 530px !important;  /* Запрещаем сжиматься */
+    margin: 15px 0 !important;    /* Отступы сверху и снизу */
+    padding: 0 !important;
+    box-sizing: border-box;
+    margin-top: -20px !important;
 }
 
 .og-btn-search {
-    padding: 12px 50px;
+    display: block !important;    /* Делаем блочной, чтобы работал авто-margin */
+
+    /* ЭТО центрирует кнопку внутри 530px контейнера без помощи Flexbox */
+    margin-left: auto !important;
+    margin-right: auto !important;
+
+    /* Ваши исходные размеры кнопки */
+    padding: 12px 50px !important;
     font-size: 1.2rem;
+    width: max-content !important; /* Кнопка не растянется на всю ширину */
 }
 
 /* Панель результатов */
@@ -106,14 +165,19 @@
     border: 1px solid #e2e8f0;
     background: white;
     border-radius: 12px;
-    min-height: 200px;
-    max-height: 400px;
+    min-height: 300px;
+    max-height: 100vh;
     overflow-y: auto;
-    padding: 15px;
+    padding: 5px;
+    flex: 1 !important;                  /* Растягиваться на всю оставшуюся высоту */
+    margin-bottom: -10px !important; /*[cite: 2] */
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+
 }
 
 #og-results-content {
-    height: 100%;
+    height: auto !important;
 }
 
 .placeholder-text {
@@ -126,7 +190,7 @@
 /* Стилизация вывода кода */
 #og-search-pre {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: none;
     padding: 15px;
     margin: 0;
     font-family: monospace;

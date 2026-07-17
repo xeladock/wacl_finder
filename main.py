@@ -1,19 +1,22 @@
 import asyncio
-import jinja2
-
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List
-from fastapi.templating import Jinja2Templates
-
 from starlette.responses import StreamingResponse
-
 
 
 # Импортируем твой парсер
 from Api_search3 import main as parse_acl_main
+from unpack_group_gui import router as og_router
+
+
+app = FastAPI(title="ACL Search Tool")
+app.include_router(og_router)
+
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 PLATFORM_GROUPS = {
     "Cisco ASA": ["Cisco ASA"],
@@ -31,12 +34,6 @@ PLATFORM_GROUPS = {
         "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
     ],
 }
-
-app = FastAPI(title="ACL Search Tool")
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
 
 class SearchRequest(BaseModel):
     source_ip: str
@@ -173,6 +170,8 @@ async def search(request: SearchRequest):
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8084, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8085, reload=True)

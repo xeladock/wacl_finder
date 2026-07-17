@@ -56,5 +56,23 @@
 
     <!-- Подключаем логику, которая будет работать внутри этой вкладки -->
     <script src="/static/js/og_viewer.js"></script>
+    <script>
+        // Задаем минимально допустимые размеры окна (соответствующие стартовым)
+        const MIN_WIDTH = 600;
+        const MIN_HEIGHT = 680;
+
+        window.addEventListener('resize', () => {
+            // Проверяем текущие внешние размеры окна (включая рамки браузера)
+            if (window.outerWidth < MIN_WIDTH || window.outerHeight < MIN_HEIGHT) {
+
+                // Вычисляем новые размеры (не даем им упасть ниже лимита)
+                const targetWidth = Math.max(window.outerWidth, MIN_WIDTH);
+                const targetHeight = Math.max(window.outerHeight, MIN_HEIGHT);
+
+                // Принудительно меняем размер окна обратно
+                window.resizeTo(targetWidth, targetHeight);
+            }
+        });
+    </script>
 </body>
 </html>
