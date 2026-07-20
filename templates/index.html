@@ -131,12 +131,13 @@
 
         <div class="og-container">
         <button onclick="openOgViewer()" class="og-viewer">
-                📁 OG Viewer
+                📦 OG Viewer
             </button>
         </div>
-                       <div class="nb-container">
-                <button onclick="downloadResult()" class="nb-viewer">
-                    NB Viewer
+            <!-- кнопка netbox -->
+        <div class="nb-container">
+                <button onclick="openNbViewer()" class="nb-viewer">
+                    📜 NetBox Viewer
                 </button>
             </div>
 
@@ -182,6 +183,22 @@ function openOgViewer() {
     );
 }
 </script>
+
+    <script>
+    function openNbViewer() {
+        const width = 980;
+        const height = 780;
+        const left = (window.screen.width / 2) - (width / 2);
+        const top = (window.screen.height / 2) - (height / 2);
+        const uniqueWindowName = 'NBViewerWindow_' + Date.now();
+
+        window.open(
+            '/nb-viewer',
+            uniqueWindowName,
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+    }
+    </script>
 
     <script>
         function resetIPs() {

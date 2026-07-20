@@ -1,0 +1,109 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: #1f2937;
+    color: #f8fafc;
+}
+
+.nb-main-card {
+    background: #f8fafc;
+    width: 100vw;
+    height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow: hidden;
+}
+/*Текст шапки*/
+.nb-main-card h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: black;
+    padding-bottom: 8px;
+}
+
+.nb-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nb-label {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #374151;
+}
+
+.nb-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.nb-textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.nb-search-container {
+    display: flex;
+    justify-content: center;
+}
+
+.nb-btn-search {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 40px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.nb-btn-search:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+/* Панель вывода */
+.nb-results-panel {
+    border: 1px solid #cbd5e1;
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+.nb-placeholder-text {
+    color: #94a3b8;
+    text-align: center;
+    font-style: italic;
+    margin-top: 40px;
+}
+
+#nb-search-pre {
+    font-family: monospace;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #0f172a;
+}

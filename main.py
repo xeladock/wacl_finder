@@ -56,6 +56,10 @@ async def index():
 async def read_og_viewer():
     return FileResponse("static/html/og_viewer.html")
 
+@app.get("/nb-viewer", response_class=HTMLResponse)
+async def get_nb_viewer():
+    return FileResponse("static/html/nb_viewer.html")
+
 @app.post("/search")
 async def search(request: SearchRequest):
     async def event_generator():
@@ -174,4 +178,4 @@ async def search(request: SearchRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8085, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8086, reload=True)

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetBox Viewer</title>
+    <link rel="stylesheet" href="/static/css/nb_viewer.css">
+</head>
+<body>
+    <div class="nb-main-card">
+        <h2>📜 NetBox Viewer</h2>
+
+        <!-- Форма ввода -->
+        <div class="nb-form-group">
+<!--            <label for="nb-input" class="nb-label">Ввод:</label>-->
+            <textarea
+                id="nb-input"
+                class="nb-textarea"
+                placeholder="Вставьте сюда список подсетей/адресов..."
+                rows="6"
+            ></textarea>
+        </div>
+
+        <!-- Кнопка поиска -->
+        <div class="nb-search-container">
+            <button id="nb-search-btn" class="nb-btn-search">🔎 Поиск</button>
+        </div>
+
+        <!-- Панель вывода результатов -->
+        <div class="nb-results-panel">
+            <div id="nb-results-content">
+                <div class="nb-placeholder-text">Результаты поиска появятся здесь...</div>
+                <pre id="nb-search-pre" style="display: none;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/nb_viewer.js"></script>
+</body>
+</html>
