@@ -24,7 +24,9 @@
                        placeholder="any"
                        class="input-field"
                        onfocus="this.placeholder=''"
-                       onblur="if(this.value==='') this.placeholder='any'">
+                       onblur="if(this.value==='') this.placeholder='any'"
+                       maxlength="50"
+                >
             </div>
 
 <!-- Destination IP -->
@@ -35,7 +37,8 @@
                        placeholder="any"
                        class="input-field"
                        onfocus="this.placeholder=''"
-                       onblur="if(this.value==='') this.placeholder='any'">
+                       onblur="if(this.value==='') this.placeholder='any'"
+                       maxlength="50">
             </div>
 
 <!-- Чекбоксы + Кнопки в одну строку -->
@@ -409,7 +412,7 @@ async function performSearch() {
 
         // Итоговая докрутка вниз
         requestAnimationFrame(() => {
-            preElement.scrollTop = preElement.scrollHeight;
+            searchPre.scrollTop = searchPre.scrollHeight;
         });
 
     } catch (err) {

@@ -168,7 +168,7 @@ scrollbar-width: none !important; /* Firefox */
     min-height: 300px;
     max-height: 100vh;
     overflow-y: auto;
-    padding: 5px;
+    padding: 1px;
     flex: 1 !important;                  /* Растягиваться на всю оставшуюся высоту */
     margin-bottom: -10px !important; /*[cite: 2] */
     margin-left: -10px !important;
@@ -191,7 +191,7 @@ scrollbar-width: none !important; /* Firefox */
 #og-search-pre {
     background: #ffffff;
     border: none;
-    padding: 15px;
+    padding: 5px;
     margin: 0;
     font-family: monospace;
     font-size: 0.95rem;

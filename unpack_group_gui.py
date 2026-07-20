@@ -33,6 +33,7 @@ def validate_ip_or_network2(value: str) -> bool:
 @router.post("/search")
 async def search_og(data: OGSearchRequest):
     device = data.device.strip()
+    device = device.split(':')[0].strip()
     group = data.group.strip()
     ip = data.ip.strip()
     print("dgp:",device, group, ip)
@@ -70,7 +71,7 @@ async def search_og(data: OGSearchRequest):
                 results.append({"text": text, "bold": False})
 
         if not cnt:
-            return {"results": [{"text": "Совпадений не найдено.", "bold": True}]}
+            return {"results": [{"text": "Совпадений не найдено.", "empty": True}]}
 
         else:
             results.insert(0,{"text": f"Найдено совпадений:{cnt}\n", "italic": True})

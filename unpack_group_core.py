@@ -8,6 +8,7 @@ BASE_DIR = "data/config_files_clear"
 
 def find_device_config(device):
     print("devise is", device)
+
     # if device == "":
     #     return "пусто"
     for root, dirs, files in os.walk(BASE_DIR):

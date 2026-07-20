@@ -78,7 +78,7 @@ header h1 {
 }
 
 .input-field {
-    width: 100%         /* Насильно заставляем инпут занять только ширину карточки */
+    width: 100%;     /* Насильно заставляем инпут занять только ширину карточки */
     box-sizing: border-box;
 }
 
@@ -150,6 +150,7 @@ header h1 {
     color: #9ca3af;        /* серый цвет */
     font-style: italic;    /* наклонный текст */
 }
+
 
 .input-field:focus {
     border-color: #3b82f6;
@@ -355,6 +356,8 @@ header h1 {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    max-height: calc(100vh - 250px);
 
 }
 /*выводит "выполняется поиск*/
@@ -375,6 +378,10 @@ header h1 {
     overflow-y: auto;
     width: 100%;
     box-sizing: border-box;
+    min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+
 }
 
 .btn-search {

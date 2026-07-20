@@ -9,6 +9,19 @@ function clearOGField(id) {
     }
 }
 
+const deviceField = document.getElementById('og-device');
+document.addEventListener('input', (event) => {
+    // Проверяем, что ввод происходит именно в поле устройства (укажите ваш ID)
+    if (event.target && event.target.id === 'og-device') {
+        let value = event.target.value;
+
+        // Если есть двоеточие — отрезаем всё после него
+        if (value.includes(':')) {
+            event.target.value = value.split(':')[0].trim();
+        }
+    }
+});
+
 // Очистить все три поля ввода
 function clearAllOGFields() {
     clearOGField('og-device');
@@ -16,15 +29,34 @@ function clearAllOGFields() {
     clearOGField('og-ip');
 }
 
+
+
 // Поиск внутри Object-Group
 async function performOGSearch() {
     console.log("Кнопка 'Поиск' в OG Viewer успешно нажата!");
 
     // Получаем элементы из вашей HTML-верстки по правильным ID
     const deviceField = document.getElementById('og-device');
+    if (deviceField) {
+        deviceField.addEventListener('input', (event) => {
+            let value = event.target.value;
+
+            // Если в строке есть двоеточие
+            if (value.includes(':')) {
+                // Отрезаем всё, начиная с двоеточия, и убираем лишние пробелы по краям
+                value = value.split(':')[0].trim();
+
+                // Обновляем значение прямо в поле ввода
+                event.target.value = value;
+            }
+        });
+    }
+
     const groupField = document.getElementById('og-name');
     const ipField = document.getElementById('og-ip');
     const resultsContent = document.getElementById('og-results-content');
+
+
 
     // Проверяем, что JS видит элементы на странице
     if (!deviceField || !groupField || !ipField || !resultsContent) {
@@ -83,8 +115,14 @@ async function performOGSearch() {
 
             if (item.italic) {
                 span.style.setProperty('font-style', 'italic', 'important');
-                span.style.setProperty('color', '#10b981', 'important');
+                span.style.setProperty('color', 'black', 'important');
             }
+
+            if (item.empty) {
+                span.style.setProperty('font-style', 'italic', 'important');
+                span.style.setProperty('color', 'black', 'important');
+            }
+
             preElement.appendChild(span);
         });
 

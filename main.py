@@ -163,7 +163,7 @@ async def search(request: SearchRequest):
                 async for chunk in stream_from_generator(generator, f"--- Поиск: {request.source_ip} → {request.dest_ip} ---\n", request.source_ip, request.dest_ip):
                     yield chunk
 
-            yield "\n✅ Поиск завершен.\n"
+            yield "\n✅ Поиск завершен.\n\n"
 
         except Exception as e:
             yield f"\n❌ Ошибка бэкенда: {str(e)}\n"
