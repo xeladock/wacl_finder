@@ -14,10 +14,10 @@ body {
     background: #f8fafc;
     width: 100vw;
     height: 100vh;
-    padding: 20px;
+    padding: 6px; /*расстояние от рамки до края окна*/
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 8px; /*расстояние до кнопки Поиск*/
     overflow: hidden;
 }
 /*Текст шапки*/
@@ -48,6 +48,8 @@ body {
     font-family: inherit;
     font-size: 0.95rem;
     resize: vertical;
+    min-height: 140px;  /* Поле нельзя сжать меньше этого значения */
+    max-height: 350px;
     outline: none;
     transition: border-color 0.2s;
 }
@@ -91,6 +93,7 @@ body {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #94a3b8 #f1f5f9;
+
 }
 
 .nb-placeholder-text {
@@ -101,6 +104,7 @@ body {
 }
 
 #nb-search-pre {
+    font-style: normal important!;
     font-family: monospace;
     font-size: 0.95rem;
     white-space: pre-wrap;
