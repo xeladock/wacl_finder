@@ -97,7 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             if (error.name === 'AbortError') {
-                searchPre.textContent += '\n⛔ Поиск остановлен пользователем.\n';
+                if (searchPre.textContent.startsWith('🔄 З')) {
+                searchPre.textContent = '⛔ Поиск остановлен пользователем.\n';
+                } else{
+                searchPre.textContent += '\n⛔ Поиск остановлен пользователем.\n';}
             } else {
                 searchPre.textContent += `\n⚠️ Произошла ошибка: ${error.message}\n`;
             }

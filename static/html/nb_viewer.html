@@ -53,7 +53,7 @@ function downloadResult() {
     const outputText = preElement ? (preElement.innerText || preElement.textContent || "").trim() : "";
 
     // 3. Проверяем, есть ли хоть какие-то данные для сохранения
-    if (!outputText) {
+    if (!outputText || outputText.startsWith('⛔ П')){
             setTimeout(() => {
             alert("Нет данных для сохранения!");
         }, 30);
