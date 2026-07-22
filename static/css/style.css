@@ -40,7 +40,8 @@ header h1 {
     display: flex;
     align-items: stretch;
     gap: 10px; /*между фреймами*/
-    width: 650px !important;
+    width: 100%;
+    max-width: 1200px;
     min-width: 650px !important;
     box-sizing: border-box;
     margin: 5px 0 0 5px;     /* ещё сильнее влево */

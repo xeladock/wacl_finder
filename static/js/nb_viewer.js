@@ -6,9 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pre = document.getElementById('nb-search-pre');
 
 // Когда приходят первые данные поиска:
-    if (placeholder) placeholder.style.display = 'none'; // Скрываем плейсхолдер
-    pre.style.display = 'block';                        // Показываем <pre>
-    pre.textContent += newChunkOfData;
+
 
     let isSearching = false;
     let abortController = null;
