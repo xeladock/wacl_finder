@@ -136,6 +136,37 @@ scrollbar-width: none !important; /* Firefox */
 
 }
 
+
+
+.og-btn-save {
+    flex-shrink: 0;
+    margin-left: -10px;
+    transform: translateY(-22px);
+    background-color: #608080;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    width: 33px;
+    height: 33px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.og-btn-save:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-23px) scale(0.88);
+
+}
+
+.og-btn-save:active {
+    transform: translateY(-7px) scale(0.85); /* <-- ВОТ ГЛАВНАЯ ПРИЧИНА */
+}
+
+
+
 /* Контейнер кнопки поиска */
 .og-search-container {
     display: block !important;    /* Убираем Flexbox полностью, чтобы исключить конфликты */
@@ -144,7 +175,7 @@ scrollbar-width: none !important; /* Firefox */
     margin: 15px 0 !important;    /* Отступы сверху и снизу */
     padding: 0 !important;
     box-sizing: border-box;
-    margin-top: -20px !important;
+    margin-top: -38px !important;
 }
 
 .og-btn-search {
@@ -173,6 +204,7 @@ scrollbar-width: none !important; /* Firefox */
     margin-bottom: -10px !important; /*[cite: 2] */
     margin-left: -10px !important;
     margin-right: -10px !important;
+    margin-top: -15px !important;
 
 }
 

@@ -10,7 +10,7 @@
 <body>
 
     <header>
-        <h1>    🔍 ACL Parser v0.14</h1>
+        <h1>    🔍 ACL Parser v0.67</h1>
     </header>
 
     <div class="main-container">
@@ -475,8 +475,11 @@ async function performSearch() {
         const resultsDiv = document.getElementById('results-content');
         const pre = resultsDiv.querySelector('pre');
 
-        if (!pre) {
-            alert("Нет результатов для сохранения!");
+    if (!pre || !pre.textContent.trim()) {
+            setTimeout(() => {
+                alert("Нет данных для сохранения!");
+            }, 30);
+
             return;
         }
 

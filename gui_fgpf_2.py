@@ -18,43 +18,6 @@ class NBQueryRequest(BaseModel):
     text: str
 
 
-def parse_and_validate_subnets(raw_text: str):
-    """
-    Парсит подсети, считает общее число IP и проверяет ограничения.
-    Возвращает (список_объектов_сетей, сообщение_об_ошибке)
-    """
-    raw_lines = raw_text.strip().splitlines()
-    networks = []
-
-    for line in raw_lines:
-        line_clean = line.strip()
-        if not line_clean:
-            continue
-        try:
-            # strict=False позволяет вводить как 10.0.0.0/24, так и IP с маской 10.0.0.5/24
-            net = ipaddress.IPv4Network(line_clean, strict=False)
-            networks.append(net)
-        except ValueError:
-            # Невалидные IP/сети просто пропускаем или игнорируем
-            pass
-
-    if not networks:
-        return None, "⚠️ Подсети/IP-адреса не введены или имеют неверный формат."
-    print("networks is:",networks)
-    # 1. Проверка на маску: сети >= /23 (т.е. prefixlen <= 23, например /23, /22, /16)
-    for net in networks:
-        if net.prefixlen < 24:  # Маски /23, /22 ... /8 содержат > 256 адресов
-            print("сеть велика")
-            return None, f"⚠️ Запрос слишком велик: сеть {net} превышает допустимый размер (разрешены сети /24 и меньше)."
-
-    # 2. Суммарный подсчёт IP-адресов во всех введенных подсетях
-    total_ips = sum(net.num_addresses for net in networks)
-    if total_ips > MAX_TOTAL_IPS:
-        return None, f"⚠️ Запрос слишком велик для исполнения.."
-
-    # return networks, None
-
-    return [str(net) for net in networks], None
 
 from get_itog import get_systems_by_subnets
 
@@ -65,33 +28,73 @@ def is_valid_subnet(s: str) -> bool:
     except Exception:
         return False
 
+def normalize_subnet(lst: list) -> list:
+    res = []
+    for i in lst:
+        try:
+            iface = ipaddress.ip_interface(i)
+            # Если введён конкретный IP внутри сети (не адрес начала сети)
+            if iface.ip != iface.network.network_address:
+                res.append(f"{iface.ip}/32")
+            else:
+                # Превращаем сеть в каноничный вид (10.0.0.0/24)
+                res.append(str(iface.network))
+        except ValueError:
+            # Если строка невалидна — просто пропускаем или оставляем как есть
+            continue
+
+    # Убираем дубликаты с сохранением порядка добавления
+    return list(dict.fromkeys(res))
+
 
 @router.post("/search")
 async def nb_search_stream(data: NBQueryRequest):
     # Парсим и валидируем введенные подсети
-    raw_lines = data.text.strip().splitlines()
+    raw_lines = set(data.text.strip().splitlines())
+    print("raw_lines is:",raw_lines)
+    total_ips = 0
     for net in raw_lines:
-        net = ipaddress.ip_network(net)
-        if net.prefixlen < 24:  # Маски /23, /22 ... /8 содержат > 256 адресов
-            print("сеть велика")
+        try:
+            net = ipaddress.ip_network(net)
 
-            async def error_generator():
-                yield f"data: ⚠️ Запрос слишком велик: сеть {net} (маска /{net.prefixlen}) превышает допустимый размер (разрешены сети /24 и меньше).\n\n"
-                yield "data: [DONE]\n\n"
+            if net.prefixlen < 24:  # Маски /23, /22 ... /8 содержат > 256 адресов
+                # print("сеть велика")
+                async def error_generator():
+                    yield f"data: ⚠️ Запрос слишком велик: сеть {net} (маска /{net.prefixlen}) превышает допустимый размер (разрешены сети /24 и меньше).\n\n"
+                    yield "data: [DONE]\n\n"
+                return StreamingResponse(error_generator(), media_type="text/event-stream")
+            else:
+                total_ips += net.num_addresses
+                print(total_ips)
+                if total_ips > MAX_TOTAL_IPS:
+                    async def error_generator():
+                        yield f"data: ⚠️ Запрос слишком велик для исполнения. Уменьшите количество искомых сетей/ip-адресов.\n\n"
+                        yield "data: [DONE]\n\n"
+                return StreamingResponse(error_generator(), media_type="text/event-stream")
+        except: pass
+    #
+    # total_ips = sum(net.num_addresses for net in raw_lines)
+    # print(total_ips)
+    # if total_ips > MAX_TOTAL_IPS:
+    #     async def error_generator():
+    #         yield f"data: ⚠️ Запрос слишком велик для исполнения. Уменьшите количество искомых сетей/ip-адресов.\n\n"
+    #         yield "data: [DONE]\n\n"
+    #     return StreamingResponse(error_generator(), media_type="text/event-stream")
 
-            return StreamingResponse(error_generator(), media_type="text/event-stream")
 
-    print("raw_lines:", raw_lines)
+    # print("raw_lines:", raw_lines)
     subnets = [line.strip() for line in raw_lines if line.strip() and is_valid_subnet(line)]
+    subnets = normalize_subnet(subnets)
 
+
+    print("subnets:", subnets)
     if not subnets:
-        async def empty_generator():
+        async def error_generator():
             yield "data: ⚠️ Подсети/IP-адреса не введены или имеют неверный формат.\n\n"
             yield "data: [DONE]\n\n"
-
-
-
+        return StreamingResponse(error_generator(), media_type="text/event-stream")
     async def event_generator():
+
         output_written = False
 
         # Обрабатываем подсети по очереди (или асинхронно)

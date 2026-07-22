@@ -59,6 +59,8 @@ def get_systems_by_subnets(subnet_list, token):
         else:
             return f"Ошибка при запросе: {response.status_code}"
     all_ips = get_lst_of_ip(subnet_list)
+    # if len(all_ips) > 256: return
+
     print("all_ips is:", all_ips)
     # if not all_ips:
     #    log.append("Ничего нет")

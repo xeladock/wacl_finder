@@ -25,7 +25,9 @@ body {
     font-size: 1.3rem;
     font-weight: 700;
     color: black;
-    padding-bottom: 8px;
+    padding-bottom: 5px;
+    margin-top: 4px;
+    margin-left: 10px;
 }
 
 .nb-form-group {
@@ -64,6 +66,12 @@ body {
     justify-content: center;
 }
 
+.nb-save-container {
+    display: flex;
+    justify-content: center;
+
+}
+
 .nb-btn-search {
     background-color: #2563eb;
     color: white;
@@ -77,9 +85,36 @@ body {
     box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
 
+.nb-btn-save {
+    flex-shrink: 0;
+    margin-left: auto;
+    margin-top: -40px;
+    background-color: #608080;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    width: 33px;
+    height: 33px;
+    padding: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+
 .nb-btn-search:hover {
     background-color: #1d4ed8;
     transform: translateY(-1px);
+}
+.nb-btn-save:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-1px) scale(0.88);
+}
+
+.nb-btn-save:active {
+    transform: translateY(7px) scale(0.85); /* <-- ВОТ ГЛАВНАЯ ПРИЧИНА */
 }
 
 /* Панель вывода */
@@ -93,6 +128,7 @@ body {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #94a3b8 #f1f5f9;
+    margin-top: -8px;
 
 }
 
