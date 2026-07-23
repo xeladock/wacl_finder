@@ -74,7 +74,7 @@ async def search(request: SearchRequest):
                 if v in PLATFORM_GROUPS:
                     allowed_platforms.extend(PLATFORM_GROUPS[v])
 
-            yield f"\nВыбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
+            yield f"Выбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
             await asyncio.sleep(0.001)
 
             # Вспомогательная функция: копит данные в строку и шлет ровно по 10 строк

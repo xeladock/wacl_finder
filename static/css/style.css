@@ -321,6 +321,8 @@ header h1 {
 }
 
 .btn-search {
+    min-width: 170px !important;
+    text-align: center;
     width: max-content;      /* ИСПРАВЛЕНО: Кнопка сохранит свою форму и не сожмется */
     background-color: #2563eb;
     color: white;
