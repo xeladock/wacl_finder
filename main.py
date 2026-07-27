@@ -32,9 +32,8 @@ PLATFORM_GROUPS = {
     "Eltex ESR":["Eltex ESR"],
     "HP ProCurve/HPE":["HPE Comware",'HP ProCurve',"HPE OfficeConnect", "HPE Comware 1910"],
     "Прочие устройства": [   # всё остальное
-        "B4COM BCOM-OS-DC", "EdgeCore", "IBM_Lenovo Network OS",
-        "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
-    ],
+        "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore", "IBM_Lenovo Network OS",
+        "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"],
 }
 
 class SearchRequest(BaseModel):
@@ -88,7 +87,8 @@ async def search(request: SearchRequest):
                 found_any = False
 
                 for row in gen:
-                    if row:
+                        # print("row is:", row)
+                    # if row:
                         if not found_any:  # Сработает вхолостую только ОДИН раз
                             found_any = True
                         buffer += row + "\n"
@@ -176,8 +176,10 @@ async def search(request: SearchRequest):
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
-
+@app.get("/help", response_class=HTMLResponse)
+async def get_help():
+    return FileResponse("static/html/help.html")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8086, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)

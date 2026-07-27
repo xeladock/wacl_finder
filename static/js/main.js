@@ -1,3 +1,22 @@
+function openHelp() {
+        // Открывает страницу справки в новой вкладке
+
+    const width =1200;
+    const height = 850;
+
+    // Высчитываем координаты для центрирования окна
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+
+    const uniqueWindowName = 'HelpViewerWindow_' + Date.now();
+
+    // Открываем окно всплывающим pop-up
+    window.open(
+        '/help',
+        uniqueWindowName,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
+    );
+}
 
 function openOgViewer() {
     // Рассчитываем координаты, чтобы окно открылось ровно по центру экрана
@@ -12,7 +31,7 @@ function openOgViewer() {
         '/og-viewer',
        /* 'OGViewerWindow',*/
        uniqueWindowName,
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
     );
 }
 
@@ -28,7 +47,7 @@ function openOgViewer() {
         window.open(
             '/nb-viewer',
             uniqueWindowName,
-            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`
         );
     }
 
@@ -61,9 +80,6 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
 
     });
 
- 
-
- 
         document.addEventListener('DOMContentLoaded', function() {
 
         // Логика для регионов
@@ -88,9 +104,8 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
         });
  
 
- 
-        let isSearching = false;
-let abortController = null;
+    let isSearching = false;
+    let abortController = null;
 
 // Единый обработчик для кнопки
 async function handleSearchClick() {

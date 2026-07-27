@@ -29,6 +29,62 @@ function clearAllOGFields() {
     clearOGField('og-ip');
 }
 
+function downloadResult() {
+    // 1. Получаем элемент ввода (замените 'og-input' на id вашего textarea или input!)
+    const inputElement = document.getElementById('og-input') || document.querySelector('textarea');
+
+    // 2. Получаем элемент вывода
+    const preElement = document.getElementById('nb-search-pre');
+
+    // Считываем значения (если элемент не найден, берем пустую строку)
+    const inputText = inputElement ? inputElement.value.trim() : "";
+    const outputText = preElement ? (preElement.innerText || preElement.textContent || "").trim() : "";
+
+    // 3. Проверяем, есть ли хоть какие-то данные для сохранения
+    if (!outputText) {
+        setTimeout(() => {
+            alert("Нет данных для сохранения!");
+        }, 30);
+        return;
+    }
+
+    // 4. Формируем красивый итоговый текст с префиксами
+    let fileContent = "";
+
+    if (inputText) {
+        fileContent += `---NB Viewer---\nВвод:\n${inputText}\n\n`;
+    }
+
+    if (outputText) {
+        fileContent += `Вывод:\n${outputText}\n`;
+    }
+
+    // 5. Создаем Blob и скачиваем файл
+    try {
+        const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+
+        // Формируем имя файла с текущей датой и временем
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        a.download = `acl_search_result_${timestamp}.txt`;
+
+        document.body.appendChild(a);
+        a.click();
+
+        // Очищаем ссылку из памяти
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+
+    } catch (err) {
+        console.error("Ошибка при скачивании файла:", err);
+    }
+}
+
 
 
 // Поиск внутри Object-Group

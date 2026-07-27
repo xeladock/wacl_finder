@@ -1,0 +1,10 @@
+html, body, .og-main-card {
+    overflow: hidden !important;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.og-main-card::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
