@@ -4,8 +4,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List
-from starlette.responses import StreamingResponse
-
+from starlette.responses import StreamingResponse, JSONResponse
 
 # Импортируем твой парсер
 from Api_search3 import main as parse_acl_main
@@ -55,19 +54,9 @@ class SearchRequest(BaseModel):
 
 
 
-
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=FileResponse)
 async def index():
-    with open("templates/index.html", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/og-viewer")
-async def read_og_viewer():
-    return FileResponse("static/html/og_viewer.html")
-
-@app.get("/nb-viewer", response_class=HTMLResponse)
-async def get_nb_viewer():
-    return FileResponse("static/html/nb_viewer.html")
+    return FileResponse("templates/index.html")
 
 @app.post("/search")
 async def search(request: SearchRequest):
@@ -94,20 +83,30 @@ async def search(request: SearchRequest):
                 cnt = 0
                 found_any = False
 
-                for row in gen:
-                        # print("row is:", row)
-                    # if row:
-                        if not found_any:  # Сработает вхолостую только ОДИН раз
+                # Безопасно получаем следующий элемент из синхронного генератора в отдельном потоке
+                def safe_next(g):
+                    try:
+                        return next(g), False
+                    except StopIteration:
+                        return None, True
+
+                while True:
+                    # Выносим шаг парсинга в фоновый поток (не забиваем event loop!)
+                    row, is_done = await asyncio.to_thread(safe_next, gen)
+                    if is_done:
+                        break
+
+                    if row:
+                        if not found_any:
                             found_any = True
                         buffer += row + "\n"
                         cnt += 1
 
-                        if cnt >= 10:  # Ровно по 10 строк накоплено
+                        if cnt >= 10:
                             yield buffer
-                            # Отправляем чистый текст + наш маркер окончания пачки
                             buffer = ""
                             cnt = 0
-                            await asyncio.sleep(0.001)  # Форсируем отправку пакета
+                            await asyncio.sleep(0.001)
 
                 if buffer:
                     yield buffer
@@ -116,7 +115,6 @@ async def search(request: SearchRequest):
                 if not found_any:
                     yield f"⭕ Ничего не найдено для {error_msg_ip_src} → {error_msg_ip_dst}\n"
                     await asyncio.sleep(0.001)
-
             # Логика запуска
             #нормальный запуск
             if request.sod:
@@ -184,6 +182,14 @@ async def search(request: SearchRequest):
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
+@app.get("/og-viewer")
+async def read_og_viewer():
+    return FileResponse("static/html/og_viewer.html")
+
+@app.get("/nb-viewer", response_class=HTMLResponse)
+async def get_nb_viewer():
+    return FileResponse("static/html/nb_viewer.html")
+
 @app.get("/help", response_class=HTMLResponse)
 async def get_help():
     return FileResponse("static/html/help.html")
@@ -195,7 +201,20 @@ async def og_get_help():
 @app.get("/nb-help", response_class=HTMLResponse)
 async def og_get_help():
     return FileResponse("static/html/nb_help.html")
+
+@app.get("/healthz/live", status_code=200)
+async def liveness():
+    """Проверка: жив ли процесс Python"""
+    return {"status": "ok"}
+
+@app.get("/healthz/ready", status_code=200)
+async def readiness():
+    """Проверка: готов ли под принимать трафик (например, доступна ли папка data/)"""
+    if os.path.exists(DATA_DIR):
+        return {"status": "ready"}
+    return JSONResponse(status_code=503, content={"status": "data directory missing"})
+
 import uvicorn
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # ✅ Nuitka четко увидит все зависимости
+    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)  # ✅ Nuitka четко увидит все зависимости

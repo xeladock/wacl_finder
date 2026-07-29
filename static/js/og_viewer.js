@@ -47,13 +47,19 @@ function clearAllOGFields() {
 
 function downloadResult() {
     // 1. Получаем элемент ввода (замените 'og-input' на id вашего textarea или input!)
-    const inputElement = document.getElementById('og-input') || document.querySelector('textarea');
+    const deviceVal = document.getElementById('og-device')?.value.trim() || "";
+    const nameVal = document.getElementById('og-name')?.value.trim() || "";
+    let ipVal = document.getElementById('og-ip')?.value.trim() || "";
 
-    // 2. Получаем элемент вывода
-    const preElement = document.getElementById('nb-search-pre');
+    // Если IP не введен — выводим 'any', как в placeholder
+    if (!ipVal) {
+        ipVal = "any";
+    }
 
-    // Считываем значения (если элемент не найден, берем пустую строку)
-    const inputText = inputElement ? inputElement.value.trim() : "";
+
+
+    // 2. Получаем элемент вывода результатов
+    const preElement = document.getElementById('og-search-pre');
     const outputText = preElement ? (preElement.innerText || preElement.textContent || "").trim() : "";
 
     // 3. Проверяем, есть ли хоть какие-то данные для сохранения
@@ -64,11 +70,12 @@ function downloadResult() {
         return;
     }
 
+    const inputLines = [deviceVal, nameVal, ipVal].join('\n');
     // 4. Формируем красивый итоговый текст с префиксами
     let fileContent = "";
 
-    if (inputText) {
-        fileContent += `---NB Viewer---\nВвод:\n${inputText}\n\n`;
+    if (inputLines) {
+        fileContent += `---OG Viewer---\nВвод:\n${inputLines}\n\n`;
     }
 
     if (outputText) {
@@ -85,7 +92,7 @@ function downloadResult() {
 
         // Формируем имя файла с текущей датой и временем
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-        a.download = `acl_search_result_${timestamp}.txt`;
+        a.download = `og_search_result_${timestamp}.txt`;
 
         document.body.appendChild(a);
         a.click();

@@ -137,10 +137,18 @@ function stopSearch(shouldAbort = true) {
     isSearching = false;
     abortController = null;
 
+
     // Возвращаем кнопку в исходный вид
-    const searchBtn = document.getElementById('search-btn'); // Укажите ваш ID кнопки
+
+    // Укажите ваш ID кнопки
+
     if (searchBtn) {
+        const searchBtn = document.getElementById('search-btn');
+        const saveBtn = document.getElementById('save-btn');
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('enable');
         searchBtn.textContent = '🔎 Поиск';
+        saveBtn.style.backgroundColor = '';
         searchBtn.style.backgroundColor = ''; // Сброс к цвету из CSS
     }
 
@@ -152,11 +160,11 @@ function stopSearch(shouldAbort = true) {
 }
 
 async function performSearch() {
-    console.log("performSearch вызвана!");
     const resultsDiv = document.getElementById('results-content');
     const searchBtn = document.getElementById('search-btn'); // Укажите ваш ID кнопки
     const srcInput = document.getElementById('source_ip');
     const dstInput = document.getElementById('dest_ip');
+
 
     // === ВАЛИДАЦИЯ ЧЕКБОКСОВ И ИП ===
     const uesChecked = document.querySelectorAll('#ues-group input[type="checkbox"]:checked').length;
@@ -234,11 +242,18 @@ async function performSearch() {
     isSearching = true;
     abortController = new AbortController();
 
+//112//
+
     if (searchBtn) {
+        const saveBtn = document.getElementById('save-btn');
         searchBtn.textContent = 'Стоп';
         searchBtn.style.backgroundColor = '#64748b'; // Серый цвет при поиске
+        saveBtn.disabled = true;
+        saveBtn.classList.add('disabled');
+        saveBtn.style.backgroundColor = '#64748b';
 
     }
+
     if (srcInput) srcInput.disabled = true;
     if (dstInput) dstInput.disabled = true;
 
@@ -248,8 +263,8 @@ async function performSearch() {
     if (!isSearching) {
         resultsDiv.innerHTML = ''; // Очищаем поле вывода
         return;
-    }
 
+    }
     try {
         // Передаем signal для возможности отмены
         const response = await fetch('/search', {
@@ -350,7 +365,7 @@ async function performSearch() {
 }
      
   
-    function isValidIPorNetwork(str) {
+function isValidIPorNetwork(str) {
         if (str === 'any') return true;
 
         // Простая проверка IPv4 / CIDR
@@ -373,7 +388,13 @@ async function performSearch() {
     return true;
 }
        
-    function downloadResult() {
+function downloadResult() {
+    const saveBtn = document.getElementById('save-btn');
+
+        // Если кнопка заблокирована — игнорируем вызов (в том числе по Ctrl+S)
+        if (saveBtn && saveBtn.disabled) {
+            return;
+        }
         const resultsDiv = document.getElementById('results-content');
         const pre = resultsDiv.querySelector('pre');
 

@@ -121,6 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function downloadResult() {
+    const searchBtn = document.getElementById('nb-search-btn');
+
+    if (searchBtn && searchBtn.textContent.trim() === 'Стоп') {
+                return; // Прерываем выполнение функции
+        }
+
     // 1. Получаем элемент ввода (замените 'nb-input' на id вашего textarea или input!)
     const inputElement = document.getElementById('nb-input') || document.querySelector('textarea');
 
@@ -160,7 +166,7 @@ function downloadResult() {
 
         // Формируем имя файла с текущей датой и временем
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-        a.download = `acl_search_result_${timestamp}.txt`;
+        a.download = `nb_search_result_${timestamp}.txt`;
 
         document.body.appendChild(a);
         a.click();
