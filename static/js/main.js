@@ -73,10 +73,22 @@ function openOgViewer() {
 
 
 document.addEventListener('keydown', function(e) {
-if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        performSearch();
+    }
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        downloadResult();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
         e.preventDefault();
         resetIPs();
     }
+if (e.key === 'F1') {
+        e.preventDefault(); // Блокируем стандартную справку браузера/ОС
+        openHelp();
+        }
 
     });
 

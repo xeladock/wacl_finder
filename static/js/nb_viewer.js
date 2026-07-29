@@ -175,3 +175,62 @@ function downloadResult() {
         console.error("Ошибка при скачивании файла:", err);
     }
 }
+
+function openHelp() {
+        // Открывает страницу справки в новой вкладке
+
+    const width =1200;
+    const height = 850;
+
+    // Высчитываем координаты для центрирования окна
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+
+    const uniqueWindowName = 'HelpViewerWindow_' + Date.now();
+
+    // Открываем окно всплывающим pop-up
+    window.open(
+        '/help',
+        uniqueWindowName,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
+    );
+}
+
+function nb_openHelp() {
+        // Открывает страницу справки в новой вкладке
+
+    const width =1200;
+    const height = 850;
+
+    // Высчитываем координаты для центрирования окна
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+
+    const uniqueWindowName = 'HelpViewerWindow_' + Date.now();
+
+    // Открываем окно всплывающим pop-up
+    window.open(
+        '/nb-help',
+        uniqueWindowName,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
+    );
+}
+
+document.addEventListener('keydown', function(e) {
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        startSearch();
+    }
+
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        downloadResult();
+    }
+if (e.key === 'F1') {
+        e.preventDefault(); // Блокируем стандартную справку браузера/ОС
+        nb_openHelp();
+        }
+
+    });
+
+

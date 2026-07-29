@@ -11,20 +11,25 @@
 <body class="og-page-body">
 
     <div class="og-main-card">
+       <div class="og-help-container">
+            <button onclick="og_openHelp()" class="og-btn-help" title="Справка">?</button>
+        </div>
         <h2>📦 Object-Group Viewer</h2>
+
+
 
         <div class="og-form">
             <!-- Строка: Устройство -->
             <div class="og-field-row">
                 <label class="og-label">Устройство:</label>
-                <input type="text" id="og-device" class="input-field og-input" placeholder="Имя устройства..." maxlength="50">
+                <input type="text" id="og-device" class="input-field og-input" placeholder="Имя устройства..." maxlength="80">
                 <button onclick="clearOGField('og-device')" class="btn-del">del</button>
             </div>
 
             <!-- Строка: Object-Group -->
             <div class="og-field-row">
                 <label class="og-label">Object-group:</label>
-                <input type="text" id="og-name" class="input-field og-input" placeholder="Название OG..." maxlength="100">
+                <input type="text" id="og-name" class="input-field og-input" placeholder="Название OG..." maxlength="120">
                 <button onclick="clearOGField('og-name')" class="btn-del">del</button>
             </div>
 
@@ -49,6 +54,7 @@
                <button onclick="downloadResult()" id="og-save-btn" class="og-btn-save">💾 </button>
         </div>
 
+
         <!-- Поле вывода результатов -->
         <div class="og-results-panel">
             <div id="og-results-content">
@@ -61,21 +67,7 @@
     <script src="/static/js/og_viewer.js"></script>
     <script>
         // Задаем минимально допустимые размеры окна (соответствующие стартовым)
-        const MIN_WIDTH = 600;
-        const MIN_HEIGHT = 680;
 
-        window.addEventListener('resize', () => {
-            // Проверяем текущие внешние размеры окна (включая рамки браузера)
-            if (window.outerWidth < MIN_WIDTH || window.outerHeight < MIN_HEIGHT) {
-
-                // Вычисляем новые размеры (не даем им упасть ниже лимита)
-                const targetWidth = Math.max(window.outerWidth, MIN_WIDTH);
-                const targetHeight = Math.max(window.outerHeight, MIN_HEIGHT);
-
-                // Принудительно меняем размер окна обратно
-                window.resizeTo(targetWidth, targetHeight);
-            }
-        });
     </script>
 
 </body>

@@ -180,6 +180,14 @@ async def search(request: SearchRequest):
 async def get_help():
     return FileResponse("static/html/help.html")
 
+@app.get("/og-help", response_class=HTMLResponse)
+async def og_get_help():
+    return FileResponse("static/html/og_help.html")
+
+@app.get("/nb-help", response_class=HTMLResponse)
+async def og_get_help():
+    return FileResponse("static/html/nb_help.html")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)

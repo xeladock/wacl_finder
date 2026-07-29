@@ -1,3 +1,19 @@
+        const MIN_WIDTH = 600;
+        const MIN_HEIGHT = 680;
+
+        window.addEventListener('resize', () => {
+            // Проверяем текущие внешние размеры окна (включая рамки браузера)
+            if (window.outerWidth < MIN_WIDTH || window.outerHeight < MIN_HEIGHT) {
+
+                // Вычисляем новые размеры (не даем им упасть ниже лимита)
+                const targetWidth = Math.max(window.outerWidth, MIN_WIDTH);
+                const targetHeight = Math.max(window.outerHeight, MIN_HEIGHT);
+
+                // Принудительно меняем размер окна обратно
+                window.resizeTo(targetWidth, targetHeight);
+            }
+        });
+
 // Очистка конкретного текстового поля
 function clearOGField(id) {
     const field = document.getElementById(id);
@@ -193,3 +209,41 @@ async function performOGSearch() {
         console.error('Ошибка OG Fetch:', error);
     }
 }
+
+function og_openHelp() {
+        // Открывает страницу справки в новой вкладке
+
+    const width =1200;
+    const height = 850;
+
+    // Высчитываем координаты для центрирования окна
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+
+    const uniqueWindowName = 'HelpViewerWindow_' + Date.now();
+
+    // Открываем окно всплывающим pop-up
+    window.open(
+        '/og-help',
+        uniqueWindowName,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
+    );
+}
+
+document.addEventListener('keydown', function(e) {
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        performOGSearch();
+    }
+
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        downloadResult();
+
+    }
+if (e.key === 'F1') {
+        e.preventDefault(); // Блокируем стандартную справку браузера/ОС
+        og_openHelp();
+        }
+
+    });

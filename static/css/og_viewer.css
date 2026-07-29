@@ -1,6 +1,7 @@
 /* Фоновые стили для новой вкладки */
 
 .og-main-card {
+    position: relative;
     background: #f8fafc;
     width: 100vw;         /* Растягиваем ровно на ширину окна */
     height: 100vh !important;        /* Растягиваем ровно на высоту окна */
@@ -232,4 +233,42 @@ scrollbar-width: none !important; /* Firefox */
     border-radius: 8px;
     overflow: auto;
     white-space: pre;
+}
+
+.top-card {
+    position: relative; /* ОБЯЗАТЕЛЬНО! */
+}
+
+.og-help-container {
+
+position: absolute;
+    top: 10px;      /* Отступ от верхнего края карточки */
+    right: 5px;    /* Отступ от правого края карточки */
+    z-index: 100;   /* Гарантирует, что кнопка поверх всего и кликабельна */
+    margin: 0;      /* Убираем любые отрицательные маржины! */
+    padding: 0;
+}
+
+.og-btn-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #e2e8f0;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.og-btn-help:hover {
+    background-color: #3b82f6; /* Красивый синий при наведении */
+    color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
 }
