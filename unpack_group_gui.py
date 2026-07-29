@@ -8,8 +8,6 @@ from unpack_group_core import get_object_group
 # Создаем роутер с префиксом, чтобы не путать с другими путями
 router = APIRouter(prefix="/api/og", tags=["OG Viewer"])
 
-print("it's group_enter")
-
 # Описываем входящие данные
 class OGSearchRequest(BaseModel):
     device: str

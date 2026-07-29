@@ -12,6 +12,14 @@ from Api_search3 import main as parse_acl_main
 from unpack_group_gui import router as og_router
 from gui_fgpf_2 import router as nb_router
 
+import sys
+import os
+
+# Получаем абсолютный путь к папке, где лежит исполняемый main.bin (или main.exe)
+APP_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+
+# Путь к вашей внешней обновляемой папке
+DATA_DIR = os.path.join(APP_DIR, 'data')
 
 app = FastAPI(title="ACL Search Tool")
 app.include_router(og_router)
@@ -187,7 +195,7 @@ async def og_get_help():
 @app.get("/nb-help", response_class=HTMLResponse)
 async def og_get_help():
     return FileResponse("static/html/nb_help.html")
-
+import uvicorn
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
+        # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # ✅ Nuitka четко увидит все зависимости
