@@ -141,22 +141,34 @@ function stopSearch(shouldAbort = true) {
     // Возвращаем кнопку в исходный вид
 
     // Укажите ваш ID кнопки
+    const searchBtn = document.getElementById('search-btn');
+    const saveBtn = document.getElementById('save-btn');
 
     if (searchBtn) {
-        const searchBtn = document.getElementById('search-btn');
-        const saveBtn = document.getElementById('save-btn');
-        saveBtn.disabled = false;
-        saveBtn.classList.remove('enable');
         searchBtn.textContent = '🔎 Поиск';
+        searchBtn.style.backgroundColor = ''; // Сброс цвета из inline-стилей
+    }
+
+    // 3. Возвращаем кнопку сохранения в исходное состояние
+    if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('disabled'); // Был написано 'enable', исправлено на 'disabled'
         saveBtn.style.backgroundColor = '';
-        searchBtn.style.backgroundColor = ''; // Сброс к цвету из CSS
     }
 
     // Включаем обратно IP-поля
     const srcInput = document.getElementById('source_ip');
     const dstInput = document.getElementById('dest_ip');
-    if (srcInput) srcInput.disabled = false;
-    if (dstInput) dstInput.disabled = false;
+
+    if (srcInput) {
+    srcInput.disabled = false;
+    srcInput.style.backgroundColor = '';
+}
+    if (dstInput) {
+    dstInput.disabled = false;
+    dstInput.style.backgroundColor = '';
+    }
+
 }
 
 async function performSearch() {
@@ -254,8 +266,14 @@ async function performSearch() {
 
     }
 
-    if (srcInput) srcInput.disabled = true;
-    if (dstInput) dstInput.disabled = true;
+    if (srcInput) {
+        srcInput.disabled = true;
+        srcInput.style.backgroundColor = '#e2e8f0'; // Серый цвет для disabled полей
+    }
+    if (dstInput) {
+        dstInput.disabled = true;
+        dstInput.style.backgroundColor = '#e2e8f0'; // Серый цвет для disabled полей
+    }
 
     resultsDiv.innerHTML = '<p class="placeholder-text">Выполняется поиск...</p>';
     await new Promise(resolve => setTimeout(resolve, 500));  // ← задержка
@@ -273,6 +291,12 @@ async function performSearch() {
             body: JSON.stringify(data),
             signal: abortController.signal
         });
+
+    // 1. Если бэкенд сообщил, что сервис недоступен (503) — перезагружаем страницу!
+        if (response.status === 503) {
+            window.location.reload(); // FastAPI при перезагрузке сам отдаст get_error_html()
+            return;
+        }
 
         if (!response.ok) {
             resultsDiv.innerHTML = `<p style="color:red; padding:15px;">Ошибка сервера: ${response.statusText}</p>`;

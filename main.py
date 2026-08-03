@@ -1,6 +1,8 @@
 import asyncio
+import glob
+
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse,RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List
@@ -52,15 +54,20 @@ class SearchRequest(BaseModel):
     regions: List[str] = []
     vendors: List[str] = []
 
-
-
-@app.get("/", response_class=FileResponse)
+@app.get("/")
 async def index():
+    if not is_data_valid():
+        print("1 ошибка")
+        return HTMLResponse(content=get_error_html(), status_code=503)
     return FileResponse("templates/index.html")
 
 @app.post("/search")
 async def search(request: SearchRequest):
+    if not is_data_valid():
+        print("2 ошибка")
+        return HTMLResponse(content=get_error_html(), status_code=503)
     async def event_generator():
+
         try:
             regions = ["Все"] if "Все" in request.regions else request.regions
             vendors = ["Все"] if "Все" in request.vendors else request.vendors
@@ -184,10 +191,14 @@ async def search(request: SearchRequest):
 
 @app.get("/og-viewer")
 async def read_og_viewer():
+    if not is_data_valid():
+        return HTMLResponse(content=get_error_html(), status_code=503)
     return FileResponse("static/html/og_viewer.html")
 
 @app.get("/nb-viewer", response_class=HTMLResponse)
 async def get_nb_viewer():
+    if not is_data_valid():
+        return HTMLResponse(content=get_error_html(), status_code=503)
     return FileResponse("static/html/nb_viewer.html")
 
 @app.get("/help", response_class=HTMLResponse)
@@ -209,12 +220,146 @@ async def liveness():
 
 @app.get("/healthz/ready", status_code=200)
 async def readiness():
-    """Проверка: готов ли под принимать трафик (например, доступна ли папка data/)"""
-    if os.path.exists(DATA_DIR):
-        return {"status": "ready"}
-    return JSONResponse(status_code=503, content={"status": "data directory missing"})
+    """K8s Readiness Probe будет сообщать, что контейнер НЕ готов принимать трафик"""
+    if is_data_valid():
+        return JSONResponse(status_code=200, content={"status": "ready"})
+    return JSONResponse(status_code=503, content={"status": "not ready, data missing"})
+
+from time import time
+
+DATA_VALID_CACHE = False
+LAST_CHECK_TIME = 0
+CACHE_TTL = 5  # Время жизни кэша в секундах
+
+
+def is_data_valid() -> bool:
+    global DATA_VALID_CACHE, LAST_CHECK_TIME
+
+    current_time = time()
+
+    # Если с последней проверки прошло меньше 3 секунд, отдаем значение из памяти
+    if current_time - LAST_CHECK_TIME < CACHE_TTL:
+        return DATA_VALID_CACHE
+
+    # Иначе делаем реальную проверку на диске
+    if (
+        os.path.exists(DATA_DIR)
+        and os.path.isdir(DATA_DIR)
+        and os.listdir(DATA_DIR)
+    ):
+        matching_configs = glob.glob(
+            os.path.join(DATA_DIR, "config_files_clear*")
+        )
+        DATA_VALID_CACHE = bool(matching_configs)
+    else:
+        DATA_VALID_CACHE = False
+
+    LAST_CHECK_TIME = current_time
+    return DATA_VALID_CACHE
+
+# def is_data_valid() -> bool:
+#     """Проверяет наличие папки data, её наполненность и наличие config_files_clear*"""
+#     if not os.path.exists(DATA_DIR) or not os.path.isdir(DATA_DIR):
+#         return False
+#
+#     if not os.listdir(DATA_DIR):
+#         return False
+#
+#     matching_configs = glob.glob(os.path.join(DATA_DIR, "config_files_clear*"))
+#     if not matching_configs:
+#         return False
+#
+#     return True
+
+
+def get_error_html() -> str:
+    """Возвращает HTML-разметку служебной страницы ошибки"""
+    return """
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Сервис временно недоступен</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background-color: #f8fafc;
+                color: #0f172a;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+            }
+            .card {
+                background: white;
+                padding: 40px;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                text-align: center;
+                max-width: 420px;
+            }
+            h1 {
+                font-size: 22px;
+                color: #ef4444;
+                margin-bottom: 12px;
+            }
+            p {
+                color: #64748b;
+                font-size: 15px;
+                line-height: 1.5;
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>Сервис временно недоступен.</h1>
+            <p>Выполняется загрузка или обновление конфигураций.<br>Пожалуйста, обновите страницу через некоторое время.</p>
+        </div>
+        <script>
+            // Функция проверки готовности сервиса
+            async function checkStatus() {
+                try {
+                    // Запрашиваем K8s probe эндпоинт
+                    const response = await fetch('/healthz/ready', { cache: 'no-store' });
+                    
+                    // Если статус 200 OK — сервис восстановился!
+                    if (response.ok) {
+                        // Перезагружаем страницу для возврата на главный интерфейс
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    // Ошибки сети игнорируем, просто ждем следующего интервала
+                }
+            }
+
+            // Проверяем каждые 10 секунд (10000 мс)
+            // (10 секунд обычно удобнее для пользователя, чем 60, чтобы не ждать долго)
+            setInterval(checkStatus, 5000);
+        </script>
+    </body>
+    </html>
+    """
+
+
+# -------------------------------------------------------------
+# ГЛАВНАЯ СТРАНИЦА ПРИЛОЖЕНИЯ
+# -------------------------------------------------------------
+@app.exception_handler(404)
+async def custom_404_handler(request, exc):
+    # Если путь начинается с /static/, отсылаем честную 404 ошибку,
+    # чтобы случайно не загрузить главной страницей сломанный CSS/JS
+    if request.url.path.startswith("/static/"):
+        return JSONResponse(status_code=404, content={"message": "Not Found"})
+
+    # Все остальные несуществующие урлы перенаправляем на главный URL "/"
+    return RedirectResponse(url="/", status_code=307)
+
 
 import uvicorn
+
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
     uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)  # ✅ Nuitka четко увидит все зависимости
