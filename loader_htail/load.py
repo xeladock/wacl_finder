@@ -4,10 +4,21 @@ import shutil
 import subprocess
 import re
 from datetime import datetime
+from random import uniform
 from time import sleep
 import requests
 
-
+def try_lock(marker_path):
+    """Атомарно пытается создать файл-маркер.
+    Возвращает True только для Первого контейнера, успевшего его создать.
+    """
+    try:
+        # O_CREAT (создать) + O_EXCL (упасть с ошибкой, если файл УЖЕ существует)
+        fd = os.open(marker_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+        return True
+    except FileExistsError:
+        return False
 
 # def get_base_dir():
 #     """Определяем папку, где лежит exe или скрипт"""
@@ -30,10 +41,11 @@ def get_base_dir():
 
 BASE_DIR = get_base_dir()
 
+print("BASE DIR IS", BASE_DIR)
 
 
 def log(message):
-    date_str = datetime.now().strftime("%d_%m_%Y_%H-%M")
+    date_str = datetime.now().strftime("%d_%m_%Y")
     log_path = os.path.join(BASE_DIR, f"save-{date_str}.log")
 
     # Открывает, дописывает 1 строку и ТУТ ЖЕ закрывает
@@ -125,13 +137,13 @@ def update_symlink(target_folder, symlink_path, save_file):
 
 
 def cleanup_old_folders(base_dir, current_folder_name, save_file):
-
+    res_dir= os.path.join(base_dir,"data")
     """Удаляет старые папки с датами, кроме текущей рабочей"""
     prefix = "config_files_clear_"
     save_file("🧹 Очистка устаревших папок с датами...")
 
-    for item in os.listdir(base_dir):
-        item_path = os.path.join(base_dir, item)
+    for item in os.listdir(res_dir):
+        item_path = os.path.join(res_dir, item)
         # Проверяем, что это папка с нашим префиксом, но НЕ текущая свежая папка
         if os.path.isdir(item_path) and item.startswith(prefix) and item != current_folder_name:
             save_file(f"🗑️ Удаляем старую папку: {item}...")
@@ -143,24 +155,24 @@ def cleanup_old_folders(base_dir, current_folder_name, save_file):
 
 def main():
     print("!!! ЗАПУСК ПРОЦЕССОВ LOAD!!!")
-    success = False
+    print("Рандомная пауза для упреждения гонки данных.")
+    sleep(round(uniform(1.0, 3.0), 1))
+    success, STOP = False, False
+
     try:
         log(f"📋 Запуск сессии: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n" + "=" * 10)
 
         if not os.path.exists("/usr/bin/git"):
-            log("❌ Не найден установленный git в /usr/bin.")
-            return
+            log("Не найден установленный git в /usr/bin.")
+            STOP = True
+            return STOP
 
 
 
-        gitlab_token, netbox_token = load_creds(log)
 
         # 1. Формируем имя папки с текущей датой (например: config_files_clear_30_07_2026)
         date_str = datetime.now().strftime("%d_%m_%Y")
         current_today_folder_name = f"config_files_clear_{date_str}"
-
-
-
         # Полный путь к сегодняшней папке и к симлинку
         START_DIR = "data"
 
@@ -168,21 +180,51 @@ def main():
             os.makedirs(START_DIR, exist_ok=True)
 
         TODAY_CONFIG_DIR = os.path.join(BASE_DIR, START_DIR, current_today_folder_name)
-        SYMLINK_PATH = os.path.join(BASE_DIR,START_DIR, "config_files_clear")
+        print("TODAY_CONFIG_DIR is:", TODAY_CONFIG_DIR)
+
+        if not os.path.exists(TODAY_CONFIG_DIR):
+            os.makedirs(TODAY_CONFIG_DIR, exist_ok=True)
+
+
+        READY_MARKER = os.path.join(BASE_DIR, START_DIR, current_today_folder_name, ".ready")
+        print("READY_MARKER is:", READY_MARKER)
+
+
 
         log(f"Старт процесса сборки в целевую папку: {current_today_folder_name}")
 
         # 2. Очищаем временную папку скачивания репозиториев git
+
+
+        # Если папка за СЕГОДНЯ уже была создана ранее (перезапуск в тот же день), пересоздадим её
+        # if os.path.exists(TODAY_CONFIG_DIR):
+        #     make_writable(TODAY_CONFIG_DIR)
+        #     shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
+
+
+
+
+        if os.path.exists(TODAY_CONFIG_DIR) and os.path.exists(READY_MARKER):
+            log("✅ Данные собраны другим контейнером.")
+            print("Данные собраны другим контейнером")
+            STOP = True
+            return STOP
+        else:
+            open(READY_MARKER, 'a').close()
+
+
+
+
+
         rem_dir = os.path.join(BASE_DIR, "config_files")
         if os.path.exists(rem_dir):
             make_writable(rem_dir)
+            sleep(1)
             shutil.rmtree(rem_dir, ignore_errors=True)
+            sleep(1)
 
-        # Если папка за СЕГОДНЯ уже была создана ранее (перезапуск в тот же день), пересоздадим её
-        if os.path.exists(TODAY_CONFIG_DIR):
-            make_writable(TODAY_CONFIG_DIR)
-            shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
-
+        gitlab_token, netbox_token = load_creds(log)
+        SYMLINK_PATH = os.path.join(BASE_DIR,START_DIR, "config_files_clear")
         box = ["dc"]
         box_d={"dc":"ЦОД","lan":"ЛВС"}
 
@@ -227,6 +269,7 @@ def main():
 
                             dst_path = os.path.join(platform_dir, file)
                             shutil.copy2(src_path, dst_path)
+                            print(platform, dst_path)
 
                 log(f"Обработка [{target_type}] завершена.")
 
@@ -238,21 +281,37 @@ def main():
             sleep(1)
 
         # 4. ФИНАЛЬНЫЙ ЭТАП: Переключаем симлинк на новую готовую папку
-        log("\nПереключаем символическую ссылку...")
-        update_symlink(TODAY_CONFIG_DIR, SYMLINK_PATH, log)
 
-        # 5. Очищаем все прошлые папки с датами
-        cleanup_old_folders(BASE_DIR, current_today_folder_name,log)
-
-        log("\nВсе операции успешно завершены!")
         success = True
+        print("success is", success)
+    except Exception as e:
+        success = False
+        log(f"❌ Перехвачено исключение: {e}")
     finally:
         if success:
-            pass
+            log("\nПереключаем символическую ссылку...")
+            update_symlink(TODAY_CONFIG_DIR, SYMLINK_PATH, log)
+            sleep(1)
+
+            # 5. Очищаем все прошлые папки с датами
+            cleanup_old_folders(BASE_DIR, current_today_folder_name, log)
+            sleep(1)
+            # if os.path.exists(READY_MARKER):
+            #     os.remove(READY_MARKER)
+
+            log("\nВсе операции успешно завершены!")
+
         else:
-            from subprocess import run as rn
+            if STOP: print("выход"); return
+            log("\nПроизошла ошибка!")
             now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
-            rn(["touch", f"ERROR-{now_str}"])
+            open(os.path.join(BASE_DIR, f"ERROR-{now_str}"), 'a').close()
+            if os.path.exists(TODAY_CONFIG_DIR):
+                make_writable(TODAY_CONFIG_DIR)
+                sleep(1)
+                shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
+                sleep(1)
+
 
 
 if __name__ == "__main__":
