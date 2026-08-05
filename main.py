@@ -16,34 +16,54 @@ from gui_fgpf_2 import router as nb_router
 import sys
 import os
 
+
 # Получаем абсолютный путь к папке, где лежит исполняемый main.bin (или main.exe)
 APP_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
-
+# APP_DIR = os.path.dirname(os.path.abspath(__file__))
 # Путь к вашей внешней обновляемой папке
 DATA_DIR = os.path.join(APP_DIR, 'data')
+
 
 app = FastAPI(title="ACL Search Tool")
 app.include_router(og_router)
 app.include_router(nb_router)
 
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.mount("/static", StaticFiles(directory=os.path.join(APP_DIR, "static")), name="static")
 
 PLATFORM_GROUPS = {
-    "Cisco ASA": ["Cisco ASA"],
-    "Cisco Firepower": ["Cisco FXOS"],
-    "Cisco IOS": ["Cisco IOS"],
-    "Cisco IOS XE": ["Cisco IOS XE"],
-    "Cisco NX-OS": ["Cisco NX-OS"],
-    "FortiOS": ["FortiOS"],
-    "Huawei": ["Huawei VRP", "Huawei VRP 2403"],
-    "Eltex":["Eltex"],
-    "Eltex ESR":["Eltex ESR"],
-    "HP ProCurve/HPE":["HPE Comware",'HP ProCurve',"HPE OfficeConnect", "HPE Comware 1910"],
-    "Прочие устройства": [   # всё остальное
+    "Cisco ASA": ("Cisco ASA",),
+    "Cisco Firepower": ("Cisco FXOS",),
+    "Cisco IOS": ("Cisco IOS",),
+    "Cisco IOS XE": ("Cisco IOS XE",),
+    "Cisco NX-OS": ("Cisco NX-OS",),
+    "FortiOS": ("FortiOS",),
+    "Huawei": ("Huawei VRP", "Huawei VRP 2403"),
+    "Eltex": ("Eltex",),
+    "Eltex ESR": ("Eltex ESR",),
+    "HP ProCurve/HPE": ("HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"),
+    "Прочие устройства": (
         "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore", "IBM_Lenovo Network OS",
-        "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"],
+        "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
+    ),
 }
+
+# PLATFORM_GROUPS = {
+#     "Cisco ASA": ["Cisco ASA"],
+#     "Cisco Firepower": ["Cisco FXOS"],
+#     "Cisco IOS": ["Cisco IOS"],
+#     "Cisco IOS XE": ["Cisco IOS XE"],
+#     "Cisco NX-OS": ["Cisco NX-OS"],
+#     "FortiOS": ["FortiOS"],
+#     "Huawei": ["Huawei VRP", "Huawei VRP 2403"],
+#     "Eltex":["Eltex"],
+#     "Eltex ESR":["Eltex ESR"],
+#     "HP ProCurve/HPE":["HPE Comware",'HP ProCurve',"HPE OfficeConnect", "HPE Comware 1910"],
+#     "Прочие устройства": [   # всё остальное
+#         "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore", "IBM_Lenovo Network OS",
+#         "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"],
+# }
 
 class SearchRequest(BaseModel):
     source_ip: str
@@ -69,13 +89,21 @@ async def search(request: SearchRequest):
     async def event_generator():
 
         try:
-            regions = ["Все"] if "Все" in request.regions else request.regions
-            vendors = ["Все"] if "Все" in request.vendors else request.vendors
+            regions = ["Все"] if "Все" == request.regions[-1] else request.regions
+            vendors = ["Все"] if "Все" == request.vendors[-1] else request.vendors
+            print("regions main is:", regions)
+            print("vendors main is:", vendors)
+            sleep(2)
 
-            allowed_platforms = []
-            for v in vendors:
-                if v in PLATFORM_GROUPS:
-                    allowed_platforms.extend(PLATFORM_GROUPS[v])
+            if vendors == ["Все"]:
+                # Объединяем все множества/списки из словаря в одно готовое множество
+                allowed_platforms = set().union(*PLATFORM_GROUPS.values())
+            else:
+                allowed_platforms = set()
+                for v in vendors:
+                    if v in PLATFORM_GROUPS:
+                        allowed_platforms.update(PLATFORM_GROUPS[v])
+
 
             yield f"Выбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
             await asyncio.sleep(0.001)
@@ -225,7 +253,7 @@ async def readiness():
         return JSONResponse(status_code=200, content={"status": "ready"})
     return JSONResponse(status_code=503, content={"status": "not ready, data missing"})
 
-from time import time
+from time import time, sleep
 
 DATA_VALID_CACHE = False
 LAST_CHECK_TIME = 0
@@ -362,4 +390,4 @@ import uvicorn
 
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)  # ✅ Nuitka четко увидит все зависимости
+    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False,reload=True)  # ✅ Nuitka четко увидит все зависимости

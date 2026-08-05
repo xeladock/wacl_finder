@@ -22,26 +22,26 @@ output_dir = "data/config_files_clear"
 #     "(Юг)": "UFKR-DC",
 #     "(Сибирь)": "SI",
 # }
-
+# для вывода PREFIX_LABELS
 PREFIX_LABELS = {
-    "(Корпоративный Центр)": "CE",
+    "(Корпоративный Центр)": "CEMS",
     "(Центр)": "CE",
     "(Волга)": "PR",
     "(Дальний Восток)": "DV",
     "(Северо-Запад)": "SZ",
     "(Урал)": "UR",
     "(Юг)": "UF",
-    "(Сибирь)": "SI",
+    "(Сибирь)": "SI"
 }
-
-FIX_LABELS = {"Корпоративный Центр": "CE",
+# для расчета в список dd
+FIX_LABELS = {"КЦ": "CEMS",
     "Центр": "CE",
     "Волга": "PR",
-    "Дальний Восток": "DV",
-    "Северо-Запад": "SZ",
+    "ДВ": "DV",
+    "СЗ": "SZ",
     "Урал": "UR",
     "Юг": "UF",
-    "Сибирь": "SI",}
+    "Сибирь": "SI"}
 
 
 
@@ -68,7 +68,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
     for root, dirs, files in os.walk(output_dir):
         # print(output_dir)
         parts = root.split(os.sep)
-        print(parts)
+        # print(parts)
         if len(parts) < 4:
             continue
 
@@ -76,28 +76,35 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
 
         pl = parts[-1]  # платформа (Cisco, FortiOS, Huawei...)
 
-        print("loc pl is:",loc,pl)
+        # print("loc pl is:",loc,pl)
         # Фильтрация
-        print("проверка 1:", allowed_ues, loc)
+        # print("проверка 1:", allowed_ues, loc)
         if loc not in allowed_ues:
             continue
 
             # Фильтр по платформе
-        print("проверка 2:", allowed_platforms, pl)
+        # print("проверка 2:", allowed_platforms, pl)
         if pl not in allowed_platforms:
             continue
-        print("фин пре: ", loc,pl)
+        # print("фин пре: ", loc,pl)
         # После os.walk
-        print("ПРОВЕРКА 3:", allowed_prefixes)
+        # print("ПРОВЕРКА 3:", allowed_prefixes)
 
         for i in allowed_prefixes:
             reg = FIX_LABELS.get(i)
-
+            print("reg is:", reg, i)
+            # print("reg is:", reg)
             # print("reg is:", reg)
             if reg:
                 for file in files:
-                    if file.startswith(reg):
-                        dd[(loc, pl)].append(file)
+                    if i == "Центр":
+                        if file.startswith("CE") and not file.startswith("CEMS"):
+                            dd[(loc, pl)].append(file)
+
+                        # 2. Стандартная логика для всех остальных регионов (КЦ, Волга, Урал и т.д.)
+                    else:
+                        if file.startswith(reg):
+                            dd[(loc, pl)].append(file)
 
 
 
@@ -110,7 +117,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
     print("allowed_platforms:", allowed_platforms)
     print("dd: ",dd)
     for (k1, k2), v in dd.items():
-        print("k2 is:", k2)
+        # print("k2 is:", k2)
         if allowed_platforms and k2 not in allowed_platforms:
             continue
         if k2 == 'FortiOS':

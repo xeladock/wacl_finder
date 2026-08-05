@@ -1,5 +1,10 @@
 /* Фоновые стили для новой вкладки */
 
+.og-viewer-modal {
+    position: fixed !important;
+    z-index: 999999 !important; /* Поднимает поверх всех остальных слоев */
+}
+
 .og-main-card {
     position: relative;
     background: #f8fafc;

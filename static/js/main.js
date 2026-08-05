@@ -17,7 +17,7 @@ function openHelp() {
         `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
     );
 }
-
+let ogWindow = null;
 function openOgViewer() {
     // Рассчитываем координаты, чтобы окно открылось ровно по центру экрана
     const width = 680;
@@ -92,28 +92,57 @@ if (e.key === 'F1') {
 
     });
 
-        document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
 
-        // Логика для регионов
-        const allRegions = document.getElementById('all-regions');
-        if (allRegions) {
-            allRegions.addEventListener('change', function() {
-                const isChecked = this.checked;
-                const checkboxes = document.querySelectorAll('#regions-group .region-cb');
-                checkboxes.forEach(cb => cb.checked = isChecked);
-            });
-        }
+    // --- 1. ЛОГИКА ДЛЯ РЕГИОНОВ ---
+    const allRegions = document.getElementById('all-regions');
+    // Берем чекбоксы РЕГИОНОВ (#regions-group)
+    const regionCheckboxes = document.querySelectorAll('#regions-group .region-cb');
 
-        // Логика для вендоров
-        const allVendors = document.getElementById('all-vendors');
-        if (allVendors) {
-            allVendors.addEventListener('change', function() {
-                const isChecked = this.checked;
-                const checkboxes = document.querySelectorAll('#vendor-group .vendor-cb');
-                checkboxes.forEach(cb => cb.checked = isChecked);
-            });
-        }
+    if (allRegions) {
+        // Клик по "Все" для регионов
+        allRegions.addEventListener('change', function() {
+            const isChecked = this.checked;
+            regionCheckboxes.forEach(cb => cb.checked = isChecked);
         });
+
+        // Клик по любому отдельному региону
+        regionCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                const totalCount = regionCheckboxes.length;
+                const checkedCount = document.querySelectorAll('#regions-group .region-cb:checked').length;
+
+                // Если выбраны все регионы — ставим "Все", иначе снимаем
+                allRegions.checked = (checkedCount === totalCount);
+            });
+        });
+    }
+
+    // --- 2. ЛОГИКА ДЛЯ ВЕНДОРОВ ---
+    const allVendors = document.getElementById('all-vendors');
+    // Берем чекбоксы ВЕНДОРОВ (#vendor-group)
+    const vendorCheckboxes = document.querySelectorAll('#vendor-group .vendor-cb');
+
+    if (allVendors) {
+        // Клик по "Все" для вендоров
+        allVendors.addEventListener('change', function() {
+            const isChecked = this.checked;
+            vendorCheckboxes.forEach(cb => cb.checked = isChecked);
+        });
+
+        // Клик по любому отдельному вендору
+        vendorCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                const totalCount = vendorCheckboxes.length;
+                const checkedCount = document.querySelectorAll('#vendor-group .vendor-cb:checked').length;
+
+                // Если выбраны все вендоры — ставим "Все", иначе снимаем
+                allVendors.checked = (checkedCount === totalCount);
+            });
+        });
+    }
+
+});
  
 
     let isSearching = false;
