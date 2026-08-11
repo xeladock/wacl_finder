@@ -39,7 +39,8 @@ def get_base_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 
-BASE_DIR = get_base_dir()
+BASE_DIR = "/hdd_disk"
+BASE_DIR_RAM = "/ram_disk"
 
 print("BASE DIR IS", BASE_DIR)
 
@@ -156,7 +157,7 @@ def cleanup_old_folders(base_dir, current_folder_name, save_file):
 def main():
     print("!!! ЗАПУСК ПРОЦЕССОВ LOAD!!!")
     print("Рандомная пауза для упреждения гонки данных.")
-    sleep(round(uniform(1.0, 3.0), 1))
+    sleep(round(uniform(6.0, 36.0), 1))
     success, STOP = False, False
 
     try:
@@ -176,10 +177,9 @@ def main():
         # Полный путь к сегодняшней папке и к симлинку
         START_DIR = "data"
 
-        if not os.path.exists(START_DIR):
-            os.makedirs(START_DIR, exist_ok=True)
 
         TODAY_CONFIG_DIR = os.path.join(BASE_DIR, START_DIR, current_today_folder_name)
+
         print("TODAY_CONFIG_DIR is:", TODAY_CONFIG_DIR)
 
         if not os.path.exists(TODAY_CONFIG_DIR):
@@ -213,9 +213,10 @@ def main():
             open(READY_MARKER, 'a').close()
 
 
-
-
-
+        FULL_PATH_RAM = os.path.join(BASE_DIR_RAM, START_DIR)
+        if not os.path.exists(FULL_PATH_RAM):
+            os.makedirs(FULL_PATH_RAM, exist_ok=True)
+        print("FULL_PATH_RAM is", FULL_PATH_RAM)
         rem_dir = os.path.join(BASE_DIR, "config_files")
         if os.path.exists(rem_dir):
             make_writable(rem_dir)
@@ -225,6 +226,7 @@ def main():
 
         gitlab_token, netbox_token = load_creds(log)
         SYMLINK_PATH = os.path.join(BASE_DIR,START_DIR, "config_files_clear")
+        SYMLINK_PATH_RAM = os.path.join(BASE_DIR_RAM,START_DIR, "config_files_clear")
         box = ["dc"]
         box_d={"dc":"ЦОД","lan":"ЛВС"}
 
@@ -289,13 +291,37 @@ def main():
         log(f"❌ Перехвачено исключение: {e}")
     finally:
         if success:
-            log("\nПереключаем символическую ссылку...")
+
+            TODAY_CONFIG_DIR_RAM = os.path.join(BASE_DIR_RAM, START_DIR, current_today_folder_name)
+
+            if not os.path.exists(FULL_PATH_RAM):
+                os.makedirs(FULL_PATH_RAM, exist_ok=True)
+
+            try:
+                log("\nКопируем папку в RAM...")
+                shutil.copytree(TODAY_CONFIG_DIR, TODAY_CONFIG_DIR_RAM, dirs_exist_ok=True)
+                sleep(1)
+            except:
+                log("\nКопирование в RAM не успешно...")
+                return
+
+            log("\nПереключаем символическую ссылку в RAM...")
+            update_symlink(TODAY_CONFIG_DIR_RAM, SYMLINK_PATH_RAM, log)
+            sleep(1)
+
+            log("\nОчищаем все прошлые папки в RAM...")
+            cleanup_old_folders(BASE_DIR_RAM, current_today_folder_name, log)
+            sleep(1)
+
+            log("\nПереключаем символическую ссылку в HDD...")
             update_symlink(TODAY_CONFIG_DIR, SYMLINK_PATH, log)
             sleep(1)
 
-            # 5. Очищаем все прошлые папки с датами
+            log("\nОчищаем все прошлые папки в HDD...")
             cleanup_old_folders(BASE_DIR, current_today_folder_name, log)
             sleep(1)
+
+            # TODAY_CONFIG_DIR = os.path.join(BASE_DIR, START_DIR, current_today_folder_name)
             # if os.path.exists(READY_MARKER):
             #     os.remove(READY_MARKER)
 
@@ -311,6 +337,7 @@ def main():
                 sleep(1)
                 shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
                 sleep(1)
+                shutil.rmtree(rem_dir, ignore_errors=True)
 
 
 

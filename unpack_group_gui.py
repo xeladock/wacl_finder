@@ -64,7 +64,7 @@ async def search_og(data: OGSearchRequest):
         for text, match in check_results:
             if match:
                 cnt+=1
-                results.append({"text": text, "bold": True})
+                results.append({"text": text + "  ✔", "bold": True})
             else:
                 results.append({"text": text, "bold": False})
 

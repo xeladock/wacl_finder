@@ -3,7 +3,14 @@ import os
 
 from unpack_group_parser import CiscoASAParser, CiscoIOSXEParser, CiscoFirepowerParser3, CiscoNexusParser, CiscoPIXParser, HuaweiVRPParser, FortigateParser
 
-BASE_DIR = "data/config_files_clear"
+# BASE_DIR = "data/config_files_clear"
+
+
+
+# BASE_DIR = DATA_DIR + "/config_files_clear"
+from path import DATA_DIR
+BASE_DIR = DATA_DIR+"/config_files_clear"
+# BASE_DIR="/home/PR.RT.RU/a.kalyaev/PycharmProjects/PythonProject/data/config_files_clear"
 
 
 def find_device_config(device):

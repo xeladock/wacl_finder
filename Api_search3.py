@@ -9,8 +9,13 @@ from class_resolver import (CiscoNexusParser, JuniperACLParser, FortiOSParser,
                             )
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+# APP_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+# print("здесь 1:",APP_DIR)
 
-output_dir = "data/config_files_clear"
+from path import DATA_DIR
+
+
+output_dir = DATA_DIR+"/config_files_clear"
 
 # PREFIX_LABELS = {
 #     "(Волга)": "PRNG-DC",
@@ -55,20 +60,18 @@ def region(vv):
 
 def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False):
     print(allowed_prefixes, allowed_platforms,allowed_ues)
-
-    if not os.path.exists(output_dir):
-        yield  ["❌ Папка с конфигурациями не найдена"]
-        return
-
+    # print("output dir is:",output_dir)
+    # print("здесь 1:", APP_DIR)
+    # print("а здесь?")
     search_text = [src_ip, dst_ip]
     # print("search_text:",search_text)
     dd = defaultdict(list)
-
+    # print("base dd")
     # prefix_to_region = {v: k for k, v in PREFIX_LABELS.items()}
     for root, dirs, files in os.walk(output_dir):
-        # print(output_dir)
-        parts = root.split(os.sep)
-        # print(parts)
+        # print("rdf", root, dirs, files)
+        parts = root.split(os.sep)[1:]
+        print("parts is:", parts)
         if len(parts) < 4:
             continue
 
@@ -92,9 +95,6 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
 
         for i in allowed_prefixes:
             reg = FIX_LABELS.get(i)
-            print("reg is:", reg, i)
-            # print("reg is:", reg)
-            # print("reg is:", reg)
             if reg:
                 for file in files:
                     if i == "Центр":

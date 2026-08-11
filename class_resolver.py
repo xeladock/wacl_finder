@@ -1,3 +1,5 @@
+import sys
+
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import ipaddress
@@ -6,7 +8,14 @@ from itertools import product
 import re
 import os
 
-base_dir="data/config_files_clear"
+from path import DATA_DIR
+base_dir = DATA_DIR+"/config_files_clear"
+
+
+# base_dir = DATA_DIR + "/config_files_clear"
+# APP_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+# base_dir="/home/PR.RT.RU/a.kalyaev/PycharmProjects/PythonProject/data/config_files_clear"
+# print("здесь 2:",base_dir)
 
 class CiscoIOSXEParser:
     def __init__(self, config_text):

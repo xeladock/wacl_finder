@@ -15,14 +15,21 @@ from gui_fgpf_2 import router as nb_router
 
 import sys
 import os
-
+# from pathlib import Path
 
 # Получаем абсолютный путь к папке, где лежит исполняемый main.bin (или main.exe)
-APP_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+# BASE_DIR2 = os.path.dirname(os.path.abspath(sys.argv[0]))
+# print("BASE_DIR2: ", BASE_DIR2)
+#
+# BASE_DIR = Path(sys.argv[0]).resolve().parent.parent
+# print("BASE_DIR: ", BASE_DIR)
 # APP_DIR = os.path.dirname(os.path.abspath(__file__))
-# Путь к вашей внешней обновляемой папке
-DATA_DIR = os.path.join(APP_DIR, 'data')
+# print("APP_DIR:", APP_DIR)
+# # Путь к вашей внешней обновляемой папке
+# DATA_DIR = os.path.join(BASE_DIR,'data')
+# print("DATA_DIR:", DATA_DIR)
 
+from path import APP_DIR, DATA_DIR
 
 app = FastAPI(title="ACL Search Tool")
 app.include_router(og_router)
@@ -93,7 +100,6 @@ async def search(request: SearchRequest):
             vendors = ["Все"] if "Все" == request.vendors[-1] else request.vendors
             print("regions main is:", regions)
             print("vendors main is:", vendors)
-            sleep(2)
 
             if vendors == ["Все"]:
                 # Объединяем все множества/списки из словаря в одно готовое множество
@@ -106,6 +112,7 @@ async def search(request: SearchRequest):
 
 
             yield f"Выбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
+
             await asyncio.sleep(0.001)
 
             # Вспомогательная функция: копит данные в строку и шлет ровно по 10 строк
@@ -390,4 +397,4 @@ import uvicorn
 
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False,reload=True)  # ✅ Nuitka четко увидит все зависимости
+    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)  # ✅ Nuitka четко увидит все зависимости
