@@ -10,6 +10,7 @@ import os
 
 from path import DATA_DIR
 base_dir = DATA_DIR+"/config_files_clear"
+base_dir = os.path.join(DATA_DIR,'config_files_clear')
 
 
 # base_dir = DATA_DIR + "/config_files_clear"

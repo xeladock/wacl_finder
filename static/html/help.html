@@ -3,15 +3,296 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Help Page </title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Глоссарий и Справка</title>
+<!--    <link rel="stylesheet" href="/static/css/style.css">-->
     <link rel="stylesheet" href="/static/css/help.css">
 </head>
 <body>
-    <div class="help-main-card">
-        <h2>Глоссарий</h2>
-        <p>Раздел справки и пользовательского руководства...</p>
-        </div>
+    <div class="help-container">
 
+        <!-- Левая панель: Навигация -->
+        <aside class="help-sidebar">
+            <div class="sidebar-sticky">
+                <h3>Оглавление</h3>
+                <nav class="help-nav">
+                    <a href="#block-1" class="nav-link active">Поиск ACL</a>
+                    <a href="#block-2" class="nav-link">Object-Group Viewer</a>
+                    <a href="#block-3" class="nav-link">NetBox Viewer Viewer</a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Правая панель: Основной контент -->
+        <main class="help-content">
+
+            <!-- Заголовок и быстрый поиск -->
+            <header class="help-header">
+                <h1>Глоссарий и Справка</h1>
+                <p>Подробное описание функций, терминов и возможностей системы.</p>
+
+                <div class="search-box">
+                    <input type="text" id="helpSearch" placeholder="Поиск по терминам и функциям..." onkeyup="filterHelp()">
+                </div>
+            </header>
+
+            <!-- БЛОК 1 -->
+            <section id="block-1" class="help-section">
+                <h2>1. Карточка ввода IP.</h2>
+
+                <div class="term-card">
+                    <div class="term-title">
+                        <code>Source IP</code> Поле ввода исходящего ip-адреса или сети.
+                    </div>
+                    <div class="term-desc">
+                        Данное поле принимает информацию об искомом исходящем/src ip-адресе. Поддерживается поиcк сети в формате "x.x.x.x/y".
+                        Пустое поле выполняет поиск любого совпадения/any ip.
+                    </div>
+                </div>
+                 <div class="term-card">
+                    <div class="term-title">
+                        <code>Destination IP</code> Поле ввода входящего ip-адреса или сети.
+                    </div>
+                    <div class="term-desc">
+                        Данное поле принимает информацию об искомом входящем/dst ip-адресе. Поддерживается поиcк сети в формате "x.x.x.x/y".
+                        Пустое поле выполняет поиск любого совпадения/any ip.
+                    </div>
+                </div>
+                                <div class="term-card">
+                    <div class="term-title">
+                        <code>Source IP</code> Поле ввода исходящего ip-адреса или сети.
+                    </div>
+                    <div class="term-desc">
+                        Принимает информацию об искомом исходящем/src ip-адресе. Поддерживается поиcк сети в формате "x.x.x.x/y".
+                        Пустое поле выполняет поиск любого совпадения/any ip.
+                    </div>
+                </div>
+                 <div class="term-card">
+                    <div class="term-title">
+                        <code>Destination IP</code> Поле ввода входящего ip-адреса или сети.
+                    </div>
+                    <div class="term-desc">
+                        Принимает информацию об искомом входящем/dst ip-адресе. Поддерживается поиcк сети в формате "x.x.x.x/y".
+                        Пустое поле выполняет поиск любого совпадения/any ip.
+                    </div>
+                </div>
+
+                <div class="term-card">
+                    <div class="term-title">
+                        <code>Строгое соответствие</code> Чекбокс строго поиска ip-адреса.
+                    </div>
+                    <div class="term-desc">
+                        Позволяет выполнять строгий поиск ip-адреса минуя любые его вхождения в сети.
+                        Поиск сети "net/mask" всегда выполняется строго.
+                    </div>
+                </div>
+
+                            <div class="term-card">
+                    <div class="term-title">
+                        <code>Source or Destination</code> Чекбокс прямого и обратного поиска.
+                    </div>
+                    <div class="term-desc">
+                        Позволяет выполнять поиск ip-адреса/сети минуя в прямом и обратном порядке направления трафика: "src > dst" + "dst > src".
+                        Поиск выполняется если одно из искомых полей (Source/Destination) пустое/any.
+                    </div>
+                </div>
+
+                           <div class="term-card">
+                    <div class="term-title">
+                        <code>Строгое соответствие</code> Чекбокс строго поиска ip-адреса.
+                    </div>
+                    <div class="term-desc">
+                        Позволяет выполнять строгий поиск ip-адреса минуя любые его вхождения в сети.
+                        Поиск сети "net/mask" всегда выполняется строго.
+                    </div>
+                </div>
+
+            <div class="term-card">
+                    <div class="term-title">
+                        <code>Сброс IP</code> Кнопка очистки данных Source/Destination IP.
+                    </div>
+                    <div class="term-desc">
+                    Очищает введенные данные, возвращая поля к состоянию пусто/any/
+                    </div>
+                </div>
+           <div class="term-card">
+                    <div class="term-title">
+                        <code>Реверс IP</code> Кнопка автозамены Source/Destination IP.
+                    </div>
+                    <div class="term-desc">
+                    Заменяет местами данные полей Source и Destination IP.
+                    </div>
+                </div>
+            <h2>2. Карточка "УЭС".</h2>
+            <div class="term-card">
+                    <div class="term-title">
+                        <code>ЦОД</code> Чекбокс "УЭС ЦОД".
+                    </div>
+                    <div class="term-desc">
+                    Выборка для данных Управления ЦОД ЦК КСПД для парсинга конфигурационных файлов ЦОД.
+                    </div>
+                </div>
+           <div class="term-card">
+                    <div class="term-title">
+                       <code>ЛВС</code> Чекбокс "УЭС ЛВС".
+                    </div>
+                    <div class="term-desc">
+                    Выборка для данных Управления ЛВС ЦК КСПД для парсинга конфигурационных файлов ЛВС.
+                    </div>
+                </div>
+
+                       <h2>3. Карточка "Фильтр по регионам".</h2>
+            <div class="term-card">
+                    <div class="term-title">
+                        <code>Регионы</code> Чекбоксы МРФ ПАО "Ростелеком".
+                    </div>
+                    <div class="term-desc">
+                    Выборка из Макрорегионов ПАО для поиск по конкретному/-ым региону/-ам.
+                    Чекбокс "Все" делает автовыборку каждого МРФ.
+                    </div>
+                </div>
+                <h2>4. Карточка "Фильтр по оборудования".</h2>
+           <div class="term-card">
+                    <div class="term-title">
+                    <code>Вендоры</code> Чекбоксы вендоров сетевого оборудования".</div>
+                    <div class="term-desc">
+                    Выборка из оборудования конкретного/-ых вендора/-ов для поиска совпадения ip-адресов/сетей.
+                    Чекбокс "Все" делает автовыборку каждого вендора.
+                    </div>
+                </div>
+                <h2>4. Кнопки дополнительного функционала.</h2>
+                <div class="term-card">
+                    <div class="term-title">
+                    <code>OG Viewer</code> Object-Group Viewer".</div>
+                    <div class="term-desc">
+                    Вызов программа извлечения адресов и сетей из Object-Group устройств.
+                        Подробнее в соответствующем оглавлении.
+                    </div>
+                </div>
+                                <div class="term-card">
+                    <div class="term-title">
+                    <code>NB Viewer</code> NetBox Viewer".</div>
+                    <div class="term-desc">
+                    Вызов программа поиска информации о конкретном/-ых ip-адресе/-ах.
+                        Подробнее в соответствующем оглавлении.
+                    </div>
+                </div>
+                    <div class="term-card">
+                    <div class="term-title">
+                    <code>Сохранить на диск</code> Экспорт вывода на компьютер.</div>
+                    <div class="term-desc">
+                    Выполняет копирование в файл найденной информации на локальный диск ПК.
+                    </div>
+                </div>
+                       <div class="term-card">
+                    <div class="term-title">
+                    <code>Поиск</code> Запуск операции поиска.</div>
+                    <div class="term-desc">
+                    Выполняет поиск совпадений/вхождений ip-адресов/сетей по выбранным фильтрам.
+                    </div>
+                </div>
+            </section>
+            <section id="block-2" class="help-section">
+                <h2>1. Object-Group Viewer.</h2>
+                                                <div class="term-card">
+                    <div class="term-title">
+                    <code>Устройство</code> Поле ввода названия устройства.</div>
+                    <div class="term-desc">
+                        Заполняется стандартным названием принятом в формате ПАО "Ростелеком" ("CENG-DCAB-AS-L1C2").
+                    </div>
+                </div>
+                    <div class="term-card">
+                    <div class="term-title">
+                    <code>Object-group</code> Поле ввода названия Object-group.</div>
+                    <div class="term-desc">
+                    Заполняется названием анализируемого Object-group.
+                    </div>
+                </div>
+                       <div class="term-card">
+                    <div class="term-title">
+                    <code>IP / Network:</code>Поле ввода искомого ip-адреса/сети.</div>
+                    <div class="term-desc">
+                    Выполняет поиск ip-адресов/сетей в заданном устройстве и OG.
+                        По-умолчанию - "any". Если поле пустое, будет сделан вывод всех ip-адресов/сетей OG.
+
+                    </div>
+                </div>
+                    <div class="term-card">
+                    <div class="term-title">
+                    <code>Del/Del All :</code>Кнопки очистки введенных данных.</div>
+                    <div class="term-desc">
+                    Очищает ввода конкретного поля (del) или всех полей сразу (del all).
+                    </div>
+                </div>
+                    <div class="term-card">
+                    <div class="term-title">
+                    <code>Сохранить</code>Кнопка сохранения найденных данных OG.</div>
+                    <div class="term-desc">
+                    Экспорт найденных данных в файл на локальный диск ПК.
+                    </div>
+                </div>
+                       <div class="term-card">
+                    <div class="term-title">
+                    <code>Поиск</code> Запуск операции поиска OG.</div>
+                    <div class="term-desc">
+                    Выполняет поиск ip-адресов/сетей по заданному устройству/OG.
+                    </div>
+                </div>
+                  </section>
+                        <section id="block-3" class="help-section">
+                <h2>1. NetBox Viewer Viewer.</h2>
+                                                <div class="term-card">
+                    <div class="term-title">
+                    <code>Ввод</code> Поле ввода ip-адресов/сетей.</div>
+                    <div class="term-desc">
+                        Заполняется ip-адресами/сетями для поиска их принадлежности к конкретной системе/PAP.
+                        Данные берутся из заполненной БД СТУ Netbox.
+                        Ограничение на разовый поиск - не более 256 адресов в сумме.
+                        Для поиска большего количества объектов разбейте количество объектов на несколько объектов/групп данных.
+
+                    </div>
+                </div>
+
+                     <div class="term-card">
+                    <div class="term-title">
+                    <code>Сохранить</code>Кнопка сохранения найденных данных NB.</div>
+                    <div class="term-desc">
+                    Экспорт найденных данных в файл на локальный диск ПК.
+                    </div>
+                </div>
+                       <div class="term-card">
+                    <div class="term-title">
+                    <code>Поиск</code> Запуск операции поиска NB.</div>
+                    <div class="term-desc">
+                    Выполняет поиск ip-адресов/сетей в базе данных СТУ NetBox.
+                    </div>
+                </div>
+                  </section>
+
+
+
+
+
+
+            <!-- БЛОК 2 -->
+
+        </main>
+    </div>
+
+    <!-- Простой скрипт для фильтрации терминов на лету -->
+    <script>
+        function filterHelp() {
+            const input = document.getElementById('helpSearch').value.toLowerCase();
+            const cards = document.getElementsByClassName('term-card');
+
+            for (let card of cards) {
+                const text = card.textContent.toLowerCase();
+                if (text.includes(input)) {
+                    card.style.display = "block";
+                } else {
+                    card.style.display = "none";
+                }
+            }
+        }
+    </script>
 </body>
 </html>

@@ -68,18 +68,20 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
     dd = defaultdict(list)
     # print("base dd")
     # prefix_to_region = {v: k for k, v in PREFIX_LABELS.items()}
-    for root, dirs, files in os.walk(output_dir):
+    for root, dirs, files in os.walk(output_dir,followlinks=True):
         # print("rdf", root, dirs, files)
         parts = root.split(os.sep)[1:]
         print("parts is:", parts)
-        if len(parts) < 4:
+        if len(parts) < 5:
+            print("path is:",len(parts))
             continue
-
+        print("переход!")
         loc = parts[-2]  # ЛВС / ЦОД
 
         pl = parts[-1]  # платформа (Cisco, FortiOS, Huawei...)
 
-        # print("loc pl is:",loc,pl)
+        print("loc pl is:",loc,pl)
+        # print("loc pl is:", loc, pl)
         # Фильтрация
         # print("проверка 1:", allowed_ues, loc)
         if loc not in allowed_ues:

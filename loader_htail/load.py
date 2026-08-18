@@ -91,7 +91,7 @@ def make_writable(path):
 
 
 def get_device_platform(device_name, netbox_token, save_file):
-    NETBOX_URL = 'https://netbox-test.rt.ru/api'
+    NETBOX_URL = 'https://netbox.rt.ru/api'
     headers = {
         "Authorization": f"Token {netbox_token}",
         "Accept": "application/json",
@@ -157,7 +157,7 @@ def cleanup_old_folders(base_dir, current_folder_name, save_file):
 def main():
     print("!!! ЗАПУСК ПРОЦЕССОВ LOAD!!!")
     print("Рандомная пауза для упреждения гонки данных.")
-    sleep(round(uniform(6.0, 36.0), 1))
+    sleep(round(uniform(6.0, 66.0), 1))
     success, STOP = False, False
 
     try:
@@ -227,7 +227,7 @@ def main():
         gitlab_token, netbox_token = load_creds(log)
         SYMLINK_PATH = os.path.join(BASE_DIR,START_DIR, "config_files_clear")
         SYMLINK_PATH_RAM = os.path.join(BASE_DIR_RAM,START_DIR, "config_files_clear")
-        box = ["dc"]
+        box = ("dc", "lan")
         box_d={"dc":"ЦОД","lan":"ЛВС"}
 
         for check in box:
@@ -328,7 +328,7 @@ def main():
             log("\nВсе операции успешно завершены!")
 
         else:
-            if STOP: print("выход"); return
+            if STOP: log("\nНормально вышли из программы!"); return
             log("\nПроизошла ошибка!")
             now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
             open(os.path.join(BASE_DIR, f"ERROR-{now_str}"), 'a').close()
@@ -337,7 +337,11 @@ def main():
                 sleep(1)
                 shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
                 sleep(1)
-                shutil.rmtree(rem_dir, ignore_errors=True)
+            if os.path.exists(rem_dir):
+                    make_writable(rem_dir)
+                    sleep(1)
+                    shutil.rmtree(rem_dir, ignore_errors=True)
+                    sleep(1)
 
 
 

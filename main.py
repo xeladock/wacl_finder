@@ -260,7 +260,7 @@ async def readiness():
         return JSONResponse(status_code=200, content={"status": "ready"})
     return JSONResponse(status_code=503, content={"status": "not ready, data missing"})
 
-from time import time, sleep
+from time import time
 
 DATA_VALID_CACHE = False
 LAST_CHECK_TIME = 0
@@ -272,7 +272,7 @@ def is_data_valid() -> bool:
 
     current_time = time()
 
-    # Если с последней проверки прошло меньше 3 секунд, отдаем значение из памяти
+    # Если с последней проверки прошло меньше 5 секунд, отдаем значение из памяти
     if current_time - LAST_CHECK_TIME < CACHE_TTL:
         return DATA_VALID_CACHE
 
@@ -372,7 +372,7 @@ def get_error_html() -> str:
 
             // Проверяем каждые 10 секунд (10000 мс)
             // (10 секунд обычно удобнее для пользователя, чем 60, чтобы не ждать долго)
-            setInterval(checkStatus, 5000);
+            setInterval(checkStatus,60000);
         </script>
     </body>
     </html>
