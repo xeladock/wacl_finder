@@ -217,7 +217,7 @@ async function performOGSearch() {
     }
 }
 
-function og_openHelp() {
+function openHelp() {
         // Открывает страницу справки в новой вкладке
 
     const width =1200;
@@ -231,12 +231,11 @@ function og_openHelp() {
 
     // Открываем окно всплывающим pop-up
     window.open(
-        '/og-help',
+        '/help#block-2',
         uniqueWindowName,
         `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
     );
 }
-
 document.addEventListener('keydown', function(e) {
 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
@@ -250,7 +249,7 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     }
 if (e.key === 'F1') {
         e.preventDefault(); // Блокируем стандартную справку браузера/ОС
-        og_openHelp();
+        openHelp();
         }
 
     });

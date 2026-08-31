@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Глоссарий и Справка</title>
+    <title>Справочная информация</title>
 <!--    <link rel="stylesheet" href="/static/css/style.css">-->
     <link rel="stylesheet" href="/static/css/help.css">
 </head>
@@ -15,9 +15,10 @@
             <div class="sidebar-sticky">
                 <h3>Оглавление</h3>
                 <nav class="help-nav">
-                    <a href="#block-1" class="nav-link active">Поиск ACL</a>
+                    <a href="#block-1" class="nav-link">Поиск ACL</a>
                     <a href="#block-2" class="nav-link">Object-Group Viewer</a>
-                    <a href="#block-3" class="nav-link">NetBox Viewer Viewer</a>
+                    <a href="#block-3" class="nav-link">NetBox Viewer</a>
+                     <a href="#block-4" class="nav-link">Общие горячие клавиши</a>
                 </nav>
             </div>
         </aside>
@@ -27,7 +28,7 @@
 
             <!-- Заголовок и быстрый поиск -->
             <header class="help-header">
-                <h1>Глоссарий и Справка</h1>
+                <h1>Справочная информация</h1>
                 <p>Подробное описание функций, терминов и возможностей системы.</p>
 
                 <div class="search-box">
@@ -37,7 +38,7 @@
 
             <!-- БЛОК 1 -->
             <section id="block-1" class="help-section">
-                <h2>1. Карточка ввода IP.</h2>
+                <h2>Форма ввода IP.</h2>
 
                 <div class="term-card">
                     <div class="term-title">
@@ -54,24 +55,6 @@
                     </div>
                     <div class="term-desc">
                         Данное поле принимает информацию об искомом входящем/dst ip-адресе. Поддерживается поиcк сети в формате "x.x.x.x/y".
-                        Пустое поле выполняет поиск любого совпадения/any ip.
-                    </div>
-                </div>
-                                <div class="term-card">
-                    <div class="term-title">
-                        <code>Source IP</code> Поле ввода исходящего ip-адреса или сети.
-                    </div>
-                    <div class="term-desc">
-                        Принимает информацию об искомом исходящем/src ip-адресе. Поддерживается поиcк сети в формате "x.x.x.x/y".
-                        Пустое поле выполняет поиск любого совпадения/any ip.
-                    </div>
-                </div>
-                 <div class="term-card">
-                    <div class="term-title">
-                        <code>Destination IP</code> Поле ввода входящего ip-адреса или сети.
-                    </div>
-                    <div class="term-desc">
-                        Принимает информацию об искомом входящем/dst ip-адресе. Поддерживается поиcк сети в формате "x.x.x.x/y".
                         Пустое поле выполняет поиск любого совпадения/any ip.
                     </div>
                 </div>
@@ -111,7 +94,8 @@
                         <code>Сброс IP</code> Кнопка очистки данных Source/Destination IP.
                     </div>
                     <div class="term-desc">
-                    Очищает введенные данные, возвращая поля к состоянию пусто/any/
+                    Очищает введенные данные, возвращая поля к состоянию пусто/any/.<br>
+                        Горячая клавиша для вызова команды: <code><b>Ctrl + c</b></code>
                     </div>
                 </div>
            <div class="term-card">
@@ -119,10 +103,11 @@
                         <code>Реверс IP</code> Кнопка автозамены Source/Destination IP.
                     </div>
                     <div class="term-desc">
-                    Заменяет местами данные полей Source и Destination IP.
+                    Заменяет местами данные полей Source и Destination IP.<br>
+                        Горячая клавиша для вызова команды: <code><b>Ctrl + r</b></code>
                     </div>
                 </div>
-            <h2>2. Карточка "УЭС".</h2>
+            <h2>Форма "УЭС".</h2>
             <div class="term-card">
                     <div class="term-title">
                         <code>ЦОД</code> Чекбокс "УЭС ЦОД".
@@ -140,17 +125,17 @@
                     </div>
                 </div>
 
-                       <h2>3. Карточка "Фильтр по регионам".</h2>
+                       <h2>Форма "Фильтр по регионам".</h2>
             <div class="term-card">
                     <div class="term-title">
                         <code>Регионы</code> Чекбоксы МРФ ПАО "Ростелеком".
                     </div>
                     <div class="term-desc">
-                    Выборка из Макрорегионов ПАО для поиск по конкретному/-ым региону/-ам.
+                    Выборка из Макрорегионов ПАО для поиска по конкретному/-ым региону/-ам.
                     Чекбокс "Все" делает автовыборку каждого МРФ.
                     </div>
                 </div>
-                <h2>4. Карточка "Фильтр по оборудования".</h2>
+                <h2>Форма "Фильтр по оборудования".</h2>
            <div class="term-card">
                     <div class="term-title">
                     <code>Вендоры</code> Чекбоксы вендоров сетевого оборудования".</div>
@@ -159,12 +144,13 @@
                     Чекбокс "Все" делает автовыборку каждого вендора.
                     </div>
                 </div>
-                <h2>4. Кнопки дополнительного функционала.</h2>
+                <h2>Кнопки дополнительного функционала.</h2>
                 <div class="term-card">
                     <div class="term-title">
                     <code>OG Viewer</code> Object-Group Viewer".</div>
                     <div class="term-desc">
-                    Вызов программа извлечения адресов и сетей из Object-Group устройств.
+                    Вызов программа извлечения адресов и сетей из Object-Group устройств.<br>
+                        Горячая клавиша для вызова команды: <code><b>Ctrl + 1</b></code><br>
                         Подробнее в соответствующем оглавлении.
                     </div>
                 </div>
@@ -172,7 +158,8 @@
                     <div class="term-title">
                     <code>NB Viewer</code> NetBox Viewer".</div>
                     <div class="term-desc">
-                    Вызов программа поиска информации о конкретном/-ых ip-адресе/-ах.
+                    Вызов программа поиска информации о конкретном/-ых ip-адресе/-ах.<br>
+                        Горячая клавиша для вызова команды: <code><b>Ctrl + 2</b></code><br>
                         Подробнее в соответствующем оглавлении.
                     </div>
                 </div>
@@ -180,7 +167,7 @@
                     <div class="term-title">
                     <code>Сохранить на диск</code> Экспорт вывода на компьютер.</div>
                     <div class="term-desc">
-                    Выполняет копирование в файл найденной информации на локальный диск ПК.
+                    Выполняет копирование найденной информации в файл на локальный диск ПК.
                     </div>
                 </div>
                        <div class="term-card">
@@ -192,7 +179,7 @@
                 </div>
             </section>
             <section id="block-2" class="help-section">
-                <h2>1. Object-Group Viewer.</h2>
+                <h2>Object-Group Viewer.</h2>
                                                 <div class="term-card">
                     <div class="term-title">
                     <code>Устройство</code> Поле ввода названия устройства.</div>
@@ -209,7 +196,7 @@
                 </div>
                        <div class="term-card">
                     <div class="term-title">
-                    <code>IP / Network:</code>Поле ввода искомого ip-адреса/сети.</div>
+                    <code>IP / Network</code>Поле ввода искомого ip-адреса/сети.</div>
                     <div class="term-desc">
                     Выполняет поиск ip-адресов/сетей в заданном устройстве и OG.
                         По-умолчанию - "any". Если поле пустое, будет сделан вывод всех ip-адресов/сетей OG.
@@ -218,7 +205,7 @@
                 </div>
                     <div class="term-card">
                     <div class="term-title">
-                    <code>Del/Del All :</code>Кнопки очистки введенных данных.</div>
+                    <code>Del / Del All</code>Кнопки очистки введенных данных.</div>
                     <div class="term-desc">
                     Очищает ввода конкретного поля (del) или всех полей сразу (del all).
                     </div>
@@ -239,7 +226,7 @@
                 </div>
                   </section>
                         <section id="block-3" class="help-section">
-                <h2>1. NetBox Viewer Viewer.</h2>
+                <h2>NetBox Viewer.</h2>
                                                 <div class="term-card">
                     <div class="term-title">
                     <code>Ввод</code> Поле ввода ip-адресов/сетей.</div>
@@ -267,7 +254,32 @@
                     </div>
                 </div>
                   </section>
+                              </section>
+            <section id="block-4" class="help-section">
+                            <h2>Обшие горячие клавиши.</h2>
+                     <div class="term-card">
+                        <div class="term-title">
+                        <code>F1</code> Вызов справки.</div>
+                        <div class="term-desc">
+                            Вызов справочной информации.
+                        </div>
+                                                    </div>
+                    <div class="term-card">
+                    <div class="term-title">
+                        <code>Ctrl + s </code> Сохранить на диск.</div>
+                        <div class="term-desc">
+                            Вызов кнопки "Сохранить на диск".
+                        </div>
+                    </div>
+                    <div class="term-card">
+                    <div class="term-title">
+                    <code>Ctrl + f </code> Выполнить поиск.</div>
+                    <div class="term-desc">
+                        Вызов кнопки "Поиск".
+                    </div>
+                        </div>
 
+                </section>
 
 
 

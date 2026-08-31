@@ -81,9 +81,21 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         downloadResult();
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         resetIPs();
+    }
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        reverseIPs();
+    }
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === '2') {
+        e.preventDefault();
+        openNbViewer();
+    }
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === '1') {
+        e.preventDefault();
+        openOgViewer();
     }
 if (e.key === 'F1') {
         e.preventDefault(); // Блокируем стандартную справку браузера/ОС
@@ -91,6 +103,7 @@ if (e.key === 'F1') {
         }
 
     });
+
 
 document.addEventListener('DOMContentLoaded', function() {
 

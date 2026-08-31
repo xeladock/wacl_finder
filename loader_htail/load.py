@@ -256,7 +256,7 @@ def main():
 
                 for root, dirs, files in os.walk(clone_dir):
                     for file in files:
-                        if file.startswith(("DV")):
+                        if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UK", "DV")):
                             src_path = os.path.join(root, file)
                             device_name = os.path.splitext(file)[0]
 
@@ -271,7 +271,7 @@ def main():
 
                             dst_path = os.path.join(platform_dir, file)
                             shutil.copy2(src_path, dst_path)
-                            print(platform, dst_path)
+                            # print(platform, dst_path)
 
                 log(f"Обработка [{target_type}] завершена.")
 

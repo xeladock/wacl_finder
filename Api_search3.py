@@ -63,7 +63,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
     # print("output dir is:",output_dir)
     # print("здесь 1:", APP_DIR)
     # print("а здесь?")
-    search_text = [src_ip, dst_ip]
+    search_text = (src_ip, dst_ip)
     # print("search_text:",search_text)
     dd = defaultdict(list)
     # print("base dd")
@@ -72,7 +72,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
         # print("rdf", root, dirs, files)
         parts = root.split(os.sep)[1:]
         print("parts is:", parts)
-        if len(parts) < 5:
+        if len(parts) < 4:
             print("path is:",len(parts))
             continue
         print("переход!")
@@ -80,7 +80,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
 
         pl = parts[-1]  # платформа (Cisco, FortiOS, Huawei...)
 
-        print("loc pl is:",loc,pl)
+        # print("loc pl is:",loc,pl)
         # print("loc pl is:", loc, pl)
         # Фильтрация
         # print("проверка 1:", allowed_ues, loc)
@@ -122,14 +122,6 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
         # print("k2 is:", k2)
         if allowed_platforms and k2 not in allowed_platforms:
             continue
-        if k2 == 'FortiOS':
-            # print(k1,k2,v)
-            for vv in v:
-                res = FortiOSParser.from_local_file(vv, search_text[0], search_text[1],strict_mode=strict_mode)
-                # print(res)
-                if res:
-                    yield(f"----{k2} {k1} {region(vv)}----")
-                    yield(vv + ": \n" + "\n".join(res) + "\n")
         if k2 in ('Cisco ASA', 'Cisco FXOS', 'Cisco PIX'):
             # print(k ,v)
             for vv in v:
@@ -138,6 +130,16 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
                 if res:
                     yield(f"----{k2} {k1} {region(vv)}----")
                     yield(vv + ": \n" + "\n".join(res) + "\n")
+
+        if k2 == 'FortiOS':
+            # print(k1,k2,v)
+            for vv in v:
+                res = FortiOSParser.from_local_file(vv, search_text[0], search_text[1],strict_mode=strict_mode)
+                # print(res)
+                if res:
+                    yield(f"----{k2} {k1} {region(vv)}----")
+                    yield(vv + ": \n" + "\n".join(res) + "\n")
+
 
         if k2 in ('Cisco IOS','HP ProCurve','B4COM BCOM-OS-DC', 'B4COM BCOM-OS-DC (VXLAN)','EdgeCore','IBM_Lenovo Network OS','Dell Networking OS') :
             for vv in v:

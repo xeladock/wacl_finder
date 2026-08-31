@@ -91,7 +91,7 @@ async def index():
 @app.post("/search")
 async def search(request: SearchRequest):
     if not is_data_valid():
-        print("2 ошибка")
+        # print("2 ошибка")
         return HTMLResponse(content=get_error_html(), status_code=503)
     async def event_generator():
 
@@ -241,12 +241,12 @@ async def get_help():
     return FileResponse("static/html/help.html")
 
 @app.get("/og-help", response_class=HTMLResponse)
-async def og_get_help():
-    return FileResponse("static/html/og_help.html")
+async def nb_get_help():
+    return FileResponse("static/html/help.html")
 
 @app.get("/nb-help", response_class=HTMLResponse)
 async def og_get_help():
-    return FileResponse("static/html/nb_help.html")
+    return FileResponse("static/html/help.html")
 
 @app.get("/healthz/live", status_code=200)
 async def liveness():
@@ -397,4 +397,4 @@ import uvicorn
 
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)  # ✅ Nuitka четко увидит все зависимости
+    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)
