@@ -59,7 +59,7 @@ def region(vv):
     return region_name
 
 def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False):
-    print(allowed_prefixes, allowed_platforms,allowed_ues)
+    # print(allowed_prefixes, allowed_platforms,allowed_ues)
     # print("output dir is:",output_dir)
     # print("здесь 1:", APP_DIR)
     # print("а здесь?")
@@ -71,11 +71,11 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
     for root, dirs, files in os.walk(output_dir,followlinks=True):
         # print("rdf", root, dirs, files)
         parts = root.split(os.sep)[1:]
-        print("parts is:", parts)
+        # print("parts is:", parts)
         if len(parts) < 4:
-            print("path is:",len(parts))
+            # print("path is:",len(parts))
             continue
-        print("переход!")
+        # print("переход!")
         loc = parts[-2]  # ЛВС / ЦОД
 
         pl = parts[-1]  # платформа (Cisco, FortiOS, Huawei...)
@@ -110,14 +110,14 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
 
 
 
-    print("DEBUG: dd после фильтрации =", dict(dd))
+    # print("DEBUG: dd после фильтрации =", dict(dd))
     # print(dd)
     # results = []
     # print(dd)
-    print(allowed_ues, "allow_ues")
-    print("allowed_prefixes:", allowed_prefixes)
-    print("allowed_platforms:", allowed_platforms)
-    print("dd: ",dd)
+    # print(allowed_ues, "allow_ues")
+    # print("allowed_prefixes:", allowed_prefixes)
+    # print("allowed_platforms:", allowed_platforms)
+    # print("dd: ",dd)
     for (k1, k2), v in dd.items():
         # print("k2 is:", k2)
         if allowed_platforms and k2 not in allowed_platforms:
@@ -187,7 +187,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
             # print(v)
             for vv in v:
                 res = EltexESRParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
-                print(res)
+                # print(res)
                 if res:
                     yield (f"----{k2} {k1} {region(vv)}----")
                     yield(vv + ": \n" + "\n".join(res) + "\n")

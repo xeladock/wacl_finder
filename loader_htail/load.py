@@ -57,8 +57,8 @@ def log(message):
 def load_creds(save_file):
     """Считывает токены из файла creds"""
     creds_path = os.path.join(BASE_DIR, "creds")
-    if not os.path.exists(creds_path) and os.path.exists(creds_path + ".txt"):
-        creds_path += ".txt"
+    # if not os.path.exists(creds_path) and os.path.exists(creds_path + ".txt"):
+    #     creds_path += ".txt"
 
     if not os.path.exists(creds_path):
         save_file(f"❌ Файл с доступом '{creds_path}' не найден!")
@@ -256,7 +256,7 @@ def main():
 
                 for root, dirs, files in os.walk(clone_dir):
                     for file in files:
-                        if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UK", "DV")):
+                        if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UR", "DV")):
                             src_path = os.path.join(root, file)
                             device_name = os.path.splitext(file)[0]
 

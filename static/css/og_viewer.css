@@ -8,7 +8,7 @@
 .og-main-card {
     position: relative;
     background: #f8fafc;
-    width: 100vw;         /* Растягиваем ровно на ширину окна */
+    width: 100% !important;     /* Растягиваем ровно на ширину окна */
     height: 100vh !important;        /* Растягиваем ровно на высоту окна */
     margin: 0 !important; /* Убираем любые внешние отступы */
     border-radius: 0;     /* (Опционально) Убираем скругление углов карточки, */

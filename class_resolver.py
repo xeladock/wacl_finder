@@ -379,7 +379,7 @@ class CiscoIOSXEParser:
                             current_acl = acl_name
                         matches.append(f" {full_line}")
             except Exception as e:
-                print(f"[!] Error: {e} in line: {full_line}")
+                # print(f"[!] Error: {e} in line: {full_line}")
                 continue
         return tuple(matches)
 
@@ -394,11 +394,11 @@ class CiscoIOSXEParser:
                             config_text = f.read()
                         # print(f"[DEBUG] Found and reading file: {full_path}")
                     except Exception as e:
-                        print(f"[!] Error reading {full_path}: {e}")
+                        # print(f"[!] Error reading {full_path}: {e}")
                         continue
                     parser = cls(config_text)
                     return parser.find_acl_matches(src_ip, dst_ip, strict_mode)
-        print(f"⚠️ File {filename} not found in directory {base_dir}")
+        # print(f"⚠️ File {filename} not found in directory {base_dir}")
         return tuple()
 class CiscoIOSParser:
     def __init__(self, config_text, hp_procurve=False):
@@ -741,11 +741,11 @@ class CiscoIOSParser:
                         with open(full_path, "r", encoding=encoding, errors="ignore") as f:
                             config_text = f.read()
                     except Exception as e:
-                        print(f"[!] Error reading {full_path}: {e}")
+                        # print(f"[!] Error reading {full_path}: {e}")
                         continue
                     parser = cls(config_text)
                     return parser.find_acl_matches(src_ip, dst_ip, strict_mode)
-        print(f"⚠️ File {filename} not found in directory {base_dir}")
+        # print(f"⚠️ File {filename} not found in directory {base_dir}")
         return tuple()
 class CiscoASAParser3:
         def __init__(self, config_text):
@@ -766,11 +766,11 @@ class CiscoASAParser3:
                             with open(full_path, "r", encoding=encoding, errors="ignore") as f:
                                 config_text = f.read()
                         except Exception as e:
-                            print(f"[!] Error reading {full_path}: {e}")
+                            # print(f"[!] Error reading {full_path}: {e}")
                             continue
                         parser = cls(config_text)
                         return parser.find_acl_matches(src_ip, dst_ip, strict_mode)
-            print(f"⚠️ File {filename} not found in directory {base_dir}")
+            # print(f"⚠️ File {filename} not found in directory {base_dir}")
             return tuple()
 
         def parse(self):
@@ -1046,7 +1046,7 @@ class CiscoASAParser3:
                     if src_ok and dst_ok:
                         matches.add(line)
                 except Exception as e:
-                    print(f"[!] Ошибка: {e} в строке: {line}")
+                    # print(f"[!] Ошибка: {e} в строке: {line}")
                     continue
             return matches
 class FortiOSParser:
@@ -1255,7 +1255,7 @@ class HuaweiParser3:
                             mask_str = parts[mask_idx + 1]     # значение маски после "mask"
                             net = ipaddress.IPv4Network(f"{ip_part}/{mask_str}", strict=False)
                             specs.append(str(net))
-                            print(f"[DEBUG ADDRESS] SUCCESS: {line} → {net}")
+                            # print(f"[DEBUG ADDRESS] SUCCESS: {line} → {net}")
                             i += 1
                             continue
 
@@ -1265,17 +1265,17 @@ class HuaweiParser3:
                             try:
                                 ipaddress.IPv4Address(p)
                                 specs.append(f"{p}/32")
-                                print(f"[DEBUG ADDRESS] fallback: {p}/32")
+                                # print(f"[DEBUG ADDRESS] fallback: {p}/32")
                             except:
                                 pass
-                except Exception as e:
-                    print(f"[DEBUG ADDRESS ERROR] {line} -> {e}")
+                except:
+                    pass
 
             i += 1
 
         if name:
             self.address_sets[name] = specs
-            print(f"[DEBUG ADDRESS-SET] Parsed '{name}' → {specs}")
+            # print(f"[DEBUG ADDRESS-SET] Parsed '{name}' → {specs}")
 
         return i
 
@@ -1289,11 +1289,11 @@ class HuaweiParser3:
                         with open(full_path, "r", encoding=encoding, errors="ignore") as f:
                             config_text = f.read()
                     except Exception as e:
-                        print(f"[!] Ошибка при чтении {full_path}: {e}")
+                        # print(f"[!] Ошибка при чтении {full_path}: {e}")
                         return ()
                     parser = cls(config_text)
                     return parser.find_acl_matches(src_ip, dst_ip, strict_mode)
-        print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
+        # print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
         return ()
 
     def parse(self):
@@ -1346,8 +1346,9 @@ class HuaweiParser3:
                     cleaned = [(s, d) for s, d in pairs if not (s == "any" and d == "any")]
                     if cleaned:
                         self.acls[current_acl][line] = cleaned
-                except Exception as e:
-                    print(f"[!] Ошибка разбора ACL: {line} — {e}")
+                except:
+                    pass
+                    # print(f"[!] Ошибка разбора ACL: {line} — {e}")
                 i += 1
                 continue
 
@@ -1541,12 +1542,12 @@ class HuaweiParser3:
 
         # === 1. В ПРАВИЛЕ лежит address-set ===
         if spec_rule in self.address_sets:
-            print(f"[DEBUG INTERSECT] address-set '{spec_rule}' contains: {self.address_sets[spec_rule]}")
+            # print(f"[DEBUG INTERSECT] address-set '{spec_rule}' contains: {self.address_sets[spec_rule]}")
             for addr in self.address_sets[spec_rule]:
                 if self._ip_matches_spec(spec_search, addr, strict_mode):
-                    print(f"[DEBUG INTERSECT] MATCH! {spec_search} inside address-set '{spec_rule}'")
+                    # print(f"[DEBUG INTERSECT] MATCH! {spec_search} inside address-set '{spec_rule}'")
                     return True
-            print(f"[DEBUG INTERSECT] No match for {spec_search} in address-set '{spec_rule}'")
+            # print(f"[DEBUG INTERSECT] No match for {spec_search} in address-set '{spec_rule}'")
             return False
 
         # === 2. Пользователь ищет по имени address-set ===
@@ -1603,8 +1604,8 @@ class HuaweiParser3:
             dst_addrs = rule['destination_addresses']
             services_str = ", ".join(rule['services']) if rule['services'] and rule['services'] != ["any"] else "any"
             action = rule['action']
-            print(
-                f"[DEBUG RULE] '{rule['name']}' | src={rule['source_addresses']} | dst={rule['destination_addresses']} | services={rule['services']}")
+            # print(
+            #     f"[DEBUG RULE] '{rule['name']}' | src={rule['source_addresses']} | dst={rule['destination_addresses']} | services={rule['services']}")
             for s_addr, d_addr in product(src_addrs, dst_addrs):
                 if s_addr == "any" and d_addr == "any":
                     continue
@@ -1854,11 +1855,11 @@ class HuaweiParser:
                         with open(full_path, "r", encoding=encoding, errors="ignore") as f:
                             config_text = f.read()
                     except Exception as e:
-                        print(f"[!] Ошибка при чтении {full_path}: {e}")
+                        # print(f"[!] Ошибка при чтении {full_path}: {e}")
                         return ()
                     parser = cls(config_text)
                     return parser.find_acl_matches(src_ip, dst_ip, strict_mode)
-        print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
+        # print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
         return ()
 
     def parse(self):
@@ -1902,8 +1903,9 @@ class HuaweiParser:
                         cleaned.append((src, dst))
                     if cleaned:
                         self.acls[current_acl][line] = cleaned
-                except Exception as e:
-                    print(f"[!] Ошибка разбора строки '{line}': {e}")
+                except:
+                    pass
+                    # print(f"[!] Ошибка разбора строки '{line}': {e}")
 
     def _parse_rule(self, line):
         parts = line.split()
@@ -2326,11 +2328,11 @@ class CiscoNexusParser:
                         with open(full_path, "r", encoding=encoding, errors="ignore") as f:
                             lines = f.readlines()  # Use readlines to preserve original lines with indentation
                     except Exception as e:
-                        print(f"[!] Ошибка чтения {full_path}: {e}")
+                        # print(f"[!] Ошибка чтения {full_path}: {e}")
                         continue
                     parser = cls(lines)
                     return parser.find_acl_matches(src_ip, dst_ip, strict_mode)
-        print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
+        # print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
         return []
 
     def _cand_to_net(self, cand):
@@ -2512,8 +2514,8 @@ class CiscoNexusParser:
                         matches.append(f"ip access-list {acl_name}")
                         current_acl = acl_name
                     matches.append(line.rstrip())  # Remove trailing \n
-            except Exception as e:
-                print(f"[!] Ошибка: {e} в строке: {line}")
+            except:
+                # print(f"[!] Ошибка: {e} в строке: {line}")
                 continue
         return tuple(matches)
 class JuniperACLParser:
@@ -2722,7 +2724,7 @@ class JuniperACLParser:
                         config_text = f.read()
                     parser = cls(config_text)
                     return tuple(parser.find_acl_matches(src_ip, dst_ip, strict_mode))
-        print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
+        # print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
         return tuple()
 class EltexACLParser:
     def __init__(self, config_text):
@@ -3772,8 +3774,9 @@ class HPEParser:
                             cleaned.append((src, dst))
                         if cleaned:
                             self.acls[current_acl][line] = cleaned
-                    except Exception as e:
-                        print(f"[!] Ошибка разбора строки '{line}': {e}")
+                    except:
+                        pass
+                        # print(f"[!] Ошибка разбора строки '{line}': {e}")
                     continue
 
             # === OfficeConnect именованный ACL (ip access-list NAME) ===
@@ -3806,8 +3809,9 @@ class HPEParser:
                         cleaned.append((src, dst))
                     if cleaned:
                         self.acls[current_acl][line] = cleaned
-                except Exception as e:
-                    print(f"[!] Ошибка разбора строки '{line}': {e}")
+                except:
+                    pass
+                    # print(f"[!] Ошибка разбора строки '{line}': {e}")
                 continue
 
             # === Правила OfficeConnect именованного ACL (permit/deny ...) ===
@@ -3826,8 +3830,9 @@ class HPEParser:
                         cleaned.append((src, dst))
                     if cleaned:
                         self.acls[current_acl][rule_line] = cleaned
-                except Exception as e:
-                    print(f"[!] Ошибка разбора строки '{rule_line}': {e}")
+                except:
+                    pass
+                    # print(f"[!] Ошибка разбора строки '{rule_line}': {e}")
 
     # ====================== Huawei/Comware парсинг правил ======================
     def _parse_rule(self, line):
@@ -4104,9 +4109,9 @@ class HPEParser:
                         with open(full_path, "r", encoding=encoding, errors="ignore") as f:
                             config_text = f.read()
                     except Exception as e:
-                        print(f"[!] Ошибка при чтении {full_path}: {e}")
+                        # print(f"[!] Ошибка при чтении {full_path}: {e}")
                         return ()
                     parser = cls(config_text)
                     return parser.find_acl_matches(src_ip, dst_ip, strict_mode)
-        print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
+        # print(f"⚠️ Файл {filename} не найден в директории {base_dir}")
         return ()

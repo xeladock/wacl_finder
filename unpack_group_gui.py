@@ -34,7 +34,7 @@ async def search_og(data: OGSearchRequest):
     device = device.split(':')[0].strip()
     group = data.group.strip()
     ip = data.ip.strip()
-    print("dgp:",device, group, ip)
+    # print("dgp:",device, group, ip)
     if not device:
         raise HTTPException(status_code=400, detail="Введите название устройства.")
     if not group:
@@ -79,5 +79,5 @@ async def search_og(data: OGSearchRequest):
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+        # print(e)
+        raise HTTPException(status_code=500, detail=f"⚠️ Внутренняя ошибка сервера: {str(e)}")

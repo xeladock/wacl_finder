@@ -14,7 +14,7 @@ BASE_DIR = DATA_DIR+"/config_files_clear"
 
 
 def find_device_config(device):
-    print("devise is", device)
+    # print("devise is", device)
 
     # if device == "":
     #     return "пусто"
@@ -59,12 +59,12 @@ def detect_vendor(path):
 def get_object_group(device, group):
 
     path = find_device_config(device)
-    print("path is", path)
+    # print("path is", path)
     if not path:
         return None, None, "Устройство не найдено."
 
     vendor = detect_vendor(path)
-    print("vendor is", vendor)
+    # print("vendor is", vendor)
     with open(path, encoding="utf8", errors="ignore") as f:
         config = f.read()
 

@@ -84,7 +84,7 @@ class SearchRequest(BaseModel):
 @app.get("/")
 async def index():
     if not is_data_valid():
-        print("1 ошибка")
+        # print("1 ошибка")
         return HTMLResponse(content=get_error_html(), status_code=503)
     return FileResponse("templates/index.html")
 
@@ -98,8 +98,8 @@ async def search(request: SearchRequest):
         try:
             regions = ["Все"] if "Все" == request.regions[-1] else request.regions
             vendors = ["Все"] if "Все" == request.vendors[-1] else request.vendors
-            print("regions main is:", regions)
-            print("vendors main is:", vendors)
+            # print("regions main is:", regions)
+            # print("vendors main is:", vendors)
 
             if vendors == ["Все"]:
                 # Объединяем все множества/списки из словаря в одно готовое множество
@@ -264,7 +264,7 @@ from time import time
 
 DATA_VALID_CACHE = False
 LAST_CHECK_TIME = 0
-CACHE_TTL = 5  # Время жизни кэша в секундах
+CACHE_TTL = 10  # Время жизни кэша в секундах
 
 
 def is_data_valid() -> bool:
@@ -272,7 +272,7 @@ def is_data_valid() -> bool:
 
     current_time = time()
 
-    # Если с последней проверки прошло меньше 5 секунд, отдаем значение из памяти
+    # Если с последней проверки прошло меньше 10 секунд, отдаем значение из памяти
     if current_time - LAST_CHECK_TIME < CACHE_TTL:
         return DATA_VALID_CACHE
 

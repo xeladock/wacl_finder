@@ -41,7 +41,7 @@ def get_systems_by_subnets(subnet_list, token):
                 addresses = [item['address'] for item in req.get('results', [])]
                 result.append(addresses)
             else:
-                log.append("Ошибка подключения к netbox.rt.ru.\n")
+                log.append("⚠️")
                 break
         result = [i for inner in result for i in inner]
         return result
@@ -61,7 +61,7 @@ def get_systems_by_subnets(subnet_list, token):
     all_ips = get_lst_of_ip(subnet_list)
     # if len(all_ips) > 256: return
 
-    print("all_ips is:", all_ips)
+    # print("all_ips is:", all_ips)
     # if not all_ips:
     #    log.append("Ничего нет")
 
@@ -81,18 +81,18 @@ def get_systems_by_subnets(subnet_list, token):
             try:
                 try:
                     device_url = ip_address.assigned_object["virtual_machine"]["url"]
-                    print(device_url)
+                    # print(device_url)
                     # log.append(f"{device_url} [VM] — {ip_address}")
                 except:
                     device_url = ip_address.assigned_object["device"]["url"]
-                    print(device_url)
+                    # print(device_url)
                     # log.append(f"{device_url} [Device] — {ip_address}")
             except:
                 continue
 
             tmp = req(device_url)
-            print("tmp is:")
-            print(tmp)
+            # print("tmp is:")
+            # print(tmp)
             if tmp:
                 if tmp not in res:
                     res.append(str(ip_address) + ' -- ' + tmp)
