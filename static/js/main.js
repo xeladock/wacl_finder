@@ -1,7 +1,7 @@
 function openHelp() {
         // Открывает страницу справки в новой вкладке
 
-    const width =1200;
+    const width = 1200;
     const height = 850;
 
     // Высчитываем координаты для центрирования окна
@@ -75,7 +75,7 @@ function openOgViewer() {
 document.addEventListener('keydown', function(e) {
 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        performSearch();
+        handleSearchClick();
     }
 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
@@ -212,45 +212,33 @@ function stopSearch(shouldAbort = true) {
     }
 
 }
-
 async function performSearch() {
     const resultsDiv = document.getElementById('results-content');
-    const searchBtn = document.getElementById('search-btn'); // Укажите ваш ID кнопки
+    const searchBtn = document.getElementById('search-btn');
     const srcInput = document.getElementById('source_ip');
     const dstInput = document.getElementById('dest_ip');
 
-
-    // === ВАЛИДАЦИЯ ЧЕКБОКСОВ И ИП ===
-    const uesChecked = document.querySelectorAll('#ues-group input[type="checkbox"]:checked').length;
-    if (uesChecked === 0) {
+    // === 1. ВАЛИДАЦИЯ ЧЕКБОКСОВ И ИНПУТОВ ===
+    const uesNodes = document.querySelectorAll('#ues-group input[type="checkbox"]:checked');
+    if (uesNodes.length === 0) {
         alert("❌ Нужно выбрать хотя бы один УЭС!");
         return;
     }
+    const ues = Array.from(uesNodes).map(cb => cb.parentElement.textContent.trim());
 
-    const ues = [];
-    document.querySelectorAll('#ues-group input[type="checkbox"]:checked').forEach(cb => {
-        ues.push(cb.parentElement.textContent.trim());
-    });
-
-    const regions = [];
-    document.querySelectorAll('#regions-group input[type="checkbox"]:checked').forEach(cb => {
-        regions.push(cb.parentElement.textContent.trim());
-    });
-    const regionsChecked = document.querySelectorAll('#regions-group input[type="checkbox"]:checked').length;
-    if (regionsChecked === 0) {
+    const regionNodes = document.querySelectorAll('#regions-group input[type="checkbox"]:checked');
+    if (regionNodes.length === 0) {
         alert("❌ Нужно выбрать хотя бы один регион!");
         return;
     }
+    const regions = Array.from(regionNodes).map(cb => cb.parentElement.textContent.trim());
 
-    const vendors = [];
-    document.querySelectorAll('#vendor-group input[type="checkbox"]:checked').forEach(cb => {
-        vendors.push(cb.parentElement.textContent.trim());
-    });
-    const vendorsChecked = document.querySelectorAll('#vendor-group input[type="checkbox"]:checked').length;
-    if (vendorsChecked === 0) {
+    const vendorNodes = document.querySelectorAll('#vendor-group input[type="checkbox"]:checked');
+    if (vendorNodes.length === 0) {
         alert("❌ Нужно выбрать хотя бы одну платформу!");
         return;
     }
+    const vendors = Array.from(vendorNodes).map(cb => cb.parentElement.textContent.trim());
 
     const srcValue = srcInput.value.trim();
     const dstValue = dstInput.value.trim();
@@ -274,7 +262,7 @@ async function performSearch() {
         source_ip: srcValue || 'any',
         dest_ip: dstValue || 'any',
         strict_mode: document.getElementById('strict_match').checked,
-        sod: document.getElementById('source_or_dest').checked,
+        sod: sorMode,
         ues: ues,
         regions: regions,
         vendors: vendors
@@ -290,43 +278,40 @@ async function performSearch() {
         return;
     }
 
-
-
-    // === ПЕРЕВОДИМ ИНТЕРФЕЙС В СОСТОЯНИЕ "ПОИСК" ===
+    // === 2. СОСТОЯНИЕ "ПОИСК" ===
     isSearching = true;
     abortController = new AbortController();
-
-//112//
 
     if (searchBtn) {
         const saveBtn = document.getElementById('save-btn');
         searchBtn.textContent = 'Стоп';
-        searchBtn.style.backgroundColor = '#64748b'; // Серый цвет при поиске
-        saveBtn.disabled = true;
-        saveBtn.classList.add('disabled');
-        saveBtn.style.backgroundColor = '#64748b';
-
+        searchBtn.style.backgroundColor = '#64748b';
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.classList.add('disabled');
+            saveBtn.style.backgroundColor = '#64748b';
+        }
     }
 
     if (srcInput) {
         srcInput.disabled = true;
-        srcInput.style.backgroundColor = '#e2e8f0'; // Серый цвет для disabled полей
+        srcInput.style.backgroundColor = '#e2e8f0';
     }
     if (dstInput) {
         dstInput.disabled = true;
-        dstInput.style.backgroundColor = '#e2e8f0'; // Серый цвет для disabled полей
+        dstInput.style.backgroundColor = '#e2e8f0';
     }
 
     resultsDiv.innerHTML = '<p class="placeholder-text">Выполняется поиск...</p>';
-    await new Promise(resolve => setTimeout(resolve, 500));  // ← задержка
+    await new Promise(resolve => setTimeout(resolve, 500));
+
 
     if (!isSearching) {
         resultsDiv.innerHTML = ''; // Очищаем поле вывода
-        return;
+        return;}
 
-    }
+
     try {
-        // Передаем signal для возможности отмены
         const response = await fetch('/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -334,9 +319,8 @@ async function performSearch() {
             signal: abortController.signal
         });
 
-    // 1. Если бэкенд сообщил, что сервис недоступен (503) — перезагружаем страницу!
         if (response.status === 503) {
-            window.location.reload(); // FastAPI при перезагрузке сам отдаст get_error_html()
+            window.location.reload();
             return;
         }
 
@@ -399,36 +383,248 @@ async function performSearch() {
             }
         }
 
-        if (textBuffer && textBuffer.trim()) {
-            const cleanText = textBuffer.replace("~~~", "");
-            preElement.insertAdjacentText('beforeend', cleanText);
+        // Хвост остатка без регулярных выражений и поиска ~~~
+        if (textBuffer) {
+            preElement.insertAdjacentText('beforeend', textBuffer);
         }
-
-        requestAnimationFrame(() => {
-            if (preElement) preElement.scrollTop = preElement.scrollHeight;
-        });
 
     } catch (err) {
         const preElement = document.getElementById('search-pre');
 
         if (err.name === 'AbortError') {
-            // Если поиск был остановлен уже ПОСЛЕ отправки сетевого запроса
             const stopMsg = '⛔ Поиск остановлен пользователем.\n\n';
             if (preElement) {
                 preElement.insertAdjacentText('beforeend', `\n${stopMsg}`);
                 preElement.scrollTop = preElement.scrollHeight;
             } else {
-                resultsDiv.innerHTML = ''; // Или оставляем пустым, если нужно: resultsDiv.innerHTML = '';
+                resultsDiv.innerHTML = '';
             }
         } else {
-            // При ошибке сети или сервера
             resultsDiv.innerHTML = `<p style="color:red; padding:15px;">Ошибка соединения: ${err.message}</p>`;
         }
     } finally {
-        // Возвращаем интерфейс в обычное состояние после завершения или ошибки
         stopSearch(false);
     }
 }
+//async function performSearch() {
+//    const resultsDiv = document.getElementById('results-content');
+//    const searchBtn = document.getElementById('search-btn'); // Укажите ваш ID кнопки
+//    const srcInput = document.getElementById('source_ip');
+//    const dstInput = document.getElementById('dest_ip');
+//
+//
+//    // === ВАЛИДАЦИЯ ЧЕКБОКСОВ И ИП ===
+//    const uesChecked = document.querySelectorAll('#ues-group input[type="checkbox"]:checked').length;
+//    if (uesChecked === 0) {
+//        alert("❌ Нужно выбрать хотя бы один УЭС!");
+//        return;
+//    }
+//
+//    const ues = [];
+//    document.querySelectorAll('#ues-group input[type="checkbox"]:checked').forEach(cb => {
+//        ues.push(cb.parentElement.textContent.trim());
+//    });
+//
+//    const regions = [];
+//    document.querySelectorAll('#regions-group input[type="checkbox"]:checked').forEach(cb => {
+//        regions.push(cb.parentElement.textContent.trim());
+//    });
+//    const regionsChecked = document.querySelectorAll('#regions-group input[type="checkbox"]:checked').length;
+//    if (regionsChecked === 0) {
+//        alert("❌ Нужно выбрать хотя бы один регион!");
+//        return;
+//    }
+//
+//    const vendors = [];
+//    document.querySelectorAll('#vendor-group input[type="checkbox"]:checked').forEach(cb => {
+//        vendors.push(cb.parentElement.textContent.trim());
+//    });
+//    const vendorsChecked = document.querySelectorAll('#vendor-group input[type="checkbox"]:checked').length;
+//    if (vendorsChecked === 0) {
+//        alert("❌ Нужно выбрать хотя бы одну платформу!");
+//        return;
+//    }
+//
+//    const srcValue = srcInput.value.trim();
+//    const dstValue = dstInput.value.trim();
+//    const sorMode = document.getElementById('source_or_dest').checked;
+//
+//    if (sorMode) {
+//        const srcFilled = srcValue && srcValue !== 'any';
+//        const dstFilled = dstValue && dstValue !== 'any';
+//
+//        if (srcFilled && dstFilled) {
+//            alert("❌ В режиме 'Source or Destination' должен быть заполнен только один IP-адрес!");
+//            return;
+//        }
+//        if (!srcFilled && !dstFilled) {
+//            alert("❌ В режиме 'Source or Destination' нужно заполнить хотя бы один IP-адрес!");
+//            return;
+//        }
+//    }
+//
+//    const data = {
+//        source_ip: srcValue || 'any',
+//        dest_ip: dstValue || 'any',
+//        strict_mode: document.getElementById('strict_match').checked,
+//        sod: document.getElementById('source_or_dest').checked,
+//        ues: ues,
+//        regions: regions,
+//        vendors: vendors
+//    };
+//
+//    if (!isValidIPorNetwork(data.source_ip)) {
+//        alert("❌ Неверный формат Source IP: " + data.source_ip + "\n\nДолжен быть IP-адрес или сеть (например 10.0.0.0/8)/");
+//        return;
+//    }
+//
+//    if (!isValidIPorNetwork(data.dest_ip)) {
+//        alert("❌ Неверный формат Destination IP: " + data.dest_ip + "\n\nДолжен быть IP-адрес или сеть (например 10.0.0.0/8)/");
+//        return;
+//    }
+//
+//
+//
+//    // === ПЕРЕВОДИМ ИНТЕРФЕЙС В СОСТОЯНИЕ "ПОИСК" ===
+//    isSearching = true;
+//    abortController = new AbortController();
+//
+////112//
+//
+//    if (searchBtn) {
+//        const saveBtn = document.getElementById('save-btn');
+//        searchBtn.textContent = 'Стоп';
+//        searchBtn.style.backgroundColor = '#64748b'; // Серый цвет при поиске
+//        saveBtn.disabled = true;
+//        saveBtn.classList.add('disabled');
+//        saveBtn.style.backgroundColor = '#64748b';
+//
+//    }
+//
+//    if (srcInput) {
+//        srcInput.disabled = true;
+//        srcInput.style.backgroundColor = '#e2e8f0'; // Серый цвет для disabled полей
+//    }
+//    if (dstInput) {
+//        dstInput.disabled = true;
+//        dstInput.style.backgroundColor = '#e2e8f0'; // Серый цвет для disabled полей
+//    }
+//
+//    resultsDiv.innerHTML = '<p class="placeholder-text">Выполняется поиск...</p>';
+//    await new Promise(resolve => setTimeout(resolve, 500));  // ← задержка
+//
+//    if (!isSearching) {
+//        resultsDiv.innerHTML = ''; // Очищаем поле вывода
+//        return;
+//
+//    }
+//    try {
+//        // Передаем signal для возможности отмены
+//        const response = await fetch('/search', {
+//            method: 'POST',
+//            headers: { 'Content-Type': 'application/json' },
+//            body: JSON.stringify(data),
+//            signal: abortController.signal
+//        });
+//
+//    // 1. Если бэкенд сообщил, что сервис недоступен (503) — перезагружаем страницу!
+//        if (response.status === 503) {
+//            window.location.reload(); // FastAPI при перезагрузке сам отдаст get_error_html()
+//            return;
+//        }
+//
+//        if (!response.ok) {
+//            resultsDiv.innerHTML = `<p style="color:red; padding:15px;">Ошибка сервера: ${response.statusText}</p>`;
+//            return;
+//        }
+//
+//        resultsDiv.style.paddingRight = "0";
+//        resultsDiv.style.paddingTop = "0";
+//        resultsDiv.style.paddingBottom = "0";
+//
+//        resultsDiv.innerHTML = `<pre id="search-pre" style="
+//            background: #ffffff;
+//            padding: 1px;
+//            margin: 0px !important;
+//            width: 100%;
+//            box-sizing: border-box;
+//            max-height: calc(100vh - 300px);
+//            overflow: auto;
+//            white-space: pre;
+//            border-radius: 6px 0 0 6px;
+//            content-visibility: auto;
+//            contain-intrinsic-size: 100px 10000px;
+//        "></pre>`;
+//
+//        const preElement = document.getElementById('search-pre');
+//        const reader = response.body.getReader();
+//        const decoder = new TextDecoder("utf-8");
+//
+//        let textBuffer = "";
+//        let isScrollPending = false;
+//
+//        while (true) {
+//            const { value, done } = await reader.read();
+//            if (done) break;
+//
+//            textBuffer += decoder.decode(value, { stream: true });
+//            const endsWithNewline = textBuffer.endsWith("\n");
+//            const lines = textBuffer.split("\n");
+//
+//            if (endsWithNewline) {
+//                lines.pop();
+//                textBuffer = "";
+//            } else {
+//                textBuffer = lines.pop();
+//            }
+//
+//            if (lines[0] !== undefined) {
+//                const readyText = lines.join("\n") + "\n";
+//                preElement.insertAdjacentText('beforeend', readyText);
+//
+//                if (!isScrollPending) {
+//                    isScrollPending = true;
+//                    requestAnimationFrame(() => {
+//                        preElement.scrollTop = preElement.scrollHeight;
+//                        isScrollPending = false;
+//                    });
+//                }
+//            }
+//        }
+//         if (textBuffer) {
+//            preElement.insertAdjacentText('beforeend', textBuffer);
+//            }
+//
+////        if (textBuffer && textBuffer.trim()) {
+////            const cleanText = textBuffer.replace("~~~", "");
+////            preElement.insertAdjacentText('beforeend', cleanText);
+////        }
+//
+//        requestAnimationFrame(() => {
+//            if (preElement) preElement.scrollTop = preElement.scrollHeight;
+//        });
+//
+//    } catch (err) {
+//        const preElement = document.getElementById('search-pre');
+//
+//        if (err.name === 'AbortError') {
+//            // Если поиск был остановлен уже ПОСЛЕ отправки сетевого запроса
+//            const stopMsg = '⛔ Поиск остановлен пользователем.\n\n';
+//            if (preElement) {
+//                preElement.insertAdjacentText('beforeend', `\n${stopMsg}`);
+//                preElement.scrollTop = preElement.scrollHeight;
+//            } else {
+//                resultsDiv.innerHTML = ''; // Или оставляем пустым, если нужно: resultsDiv.innerHTML = '';
+//            }
+//        } else {
+//            // При ошибке сети или сервера
+//            resultsDiv.innerHTML = `<p style="color:red; padding:15px;">Ошибка соединения: ${err.message}</p>`;
+//        }
+//    } finally {
+//        // Возвращаем интерфейс в обычное состояние после завершения или ошибки
+//        stopSearch(false);
+//    }
+//}
      
   
 function isValidIPorNetwork(str) {

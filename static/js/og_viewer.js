@@ -112,7 +112,7 @@ function downloadResult() {
 
 // Поиск внутри Object-Group
 async function performOGSearch() {
-    console.log("Кнопка 'Поиск' в OG Viewer успешно нажата!");
+    //console.log("Кнопка 'Поиск' в OG Viewer успешно нажата!");
 
     // Получаем элементы из вашей HTML-верстки по правильным ID
     const deviceField = document.getElementById('og-device');
@@ -147,7 +147,8 @@ async function performOGSearch() {
     const group = groupField.value.trim();
     const ip = ipField.value.trim();
 
-    console.log("Данные из полей:", { device, group, ip });
+    //console.log("Данные из полей:", { device, group, ip });
+
 
     // Показываем индикатор загрузки
     resultsContent.innerHTML = '<div class="placeholder-text">Выполняется поиск...</div>';
