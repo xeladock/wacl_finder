@@ -50,37 +50,36 @@ header h1 {
 
 .form-card {
     align-self: flex-start;
-    width: 420px;
+    width: 470px;
     flex-shrink: 0;
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    padding: 15px;        /* уменьшили отступы внутри карточки */
+    padding: 15px;        /* уменьшили отступы внутри карточки номер 1 */
     box-sizing: border-box;
 }
-
+/*основная форма */
 .form-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
-    gap: 5px;
+    gap: 6px; /*отступ между текстом и полем ввода*/
     margin-bottom: 10px; /*сократить расстояние между titles+inputs*/
 
 }
-
+/*текст и форма ввода*/
 .form-label {
+    width: 121px;
     min-width: 120px;
     text-align: right;
+    white-space: nowrap;
     font-weight: 600;
     color: #374151;
     font-size: 1.05rem;
     flex-shrink: 0;
 }
 
-.input-field {
-    width: 100%;     /* Насильно заставляем инпут занять только ширину карточки */
-    box-sizing: border-box;
-}
+
 
 .input-field:focus {
     border-color: #3b82f6;
@@ -88,13 +87,13 @@ header h1 {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 /* Чекбоксы */
-/* Контейнер для чекбоксов и кнопок */
+/* Контейнер для чекбоксов и кнопок Сброс и Реверс*/
 .controls-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-top: 10px;
-    gap: 40px;
+    gap: 15px;
 }
 
 .checkboxes {
@@ -122,7 +121,7 @@ header h1 {
 }
 
 .btn-secondary {
-    padding: 5px 10px;
+    padding: 5px 17px;
     background-color: #64748b;
     color: white;
     border: none;
@@ -137,13 +136,29 @@ header h1 {
     background-color: #3b82f6;
 }
 
+#btn-reset:hover {
+    background-color: #ef4444; /* Красный цвет (Tailwind Red 500) */
+}
+
 .input-field {
-    width: 260px;
+    box-sizing: border-box;
+    width: 200px;
     padding: 12px 16px;
     border: 2px solid #d1d5db;
     border-radius: 8px;
     font-size: 1.05rem;
     color: #1f2937;
+
+    /*
+    width: 170px;
+    padding: 8px 12px;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1.05rem;
+    color: #1f2937;
+    */
+
+
 }
 
 .input-field::placeholder {
@@ -546,4 +561,48 @@ position: absolute;
     color: #ffffff;
     border-color: #2563eb;
     box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+/*нисп. меню*/
+.mask-select {
+    box-sizing: border-box;       /* Учитывает border и padding в общей высоте */
+    height: 51px;                 /* Точная высота полей input */
+    padding: 4px 2px;            /* Внутренние отступы как у input */
+    border: 2px solid #d1d5db;    /* Рамка идентичная input */
+    border-radius: 8px;           /* Скругление как у input */
+    font-size: 1rem;
+    color: #1f2937;
+    background-color: #ffffff;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    align-self: stretch;
+}
+
+.mask-select:hover {
+    border-color: #9ca3af;
+}
+
+.mask-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.not-any-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #dc2626; /* Красный цвет для акцента на !ANY */
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.not-any-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #dc2626;
 }

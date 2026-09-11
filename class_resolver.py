@@ -1049,6 +1049,347 @@ class CiscoASAParser3:
                     # print(f"[!] Ошибка: {e} в строке: {line}")
                     continue
             return matches
+class CiscoASAParser4:
+    def __init__(self, config_text):
+        self.config_lines = config_text.splitlines()
+        self.objects = {}  # object network name -> [networks]
+        self.object_groups = defaultdict(list)  # object-group network -> [networks/objects]
+        self.acl_lines = []  # access-list строки
+        self.parse()
+
+    @classmethod
+    def from_local_file(
+        cls,
+        filename,
+        src_ip,
+        dst_ip,
+        strict_mode=False,
+        ignore_src_any=False,
+        ignore_dst_any=False,
+        src_mask_limit=None,
+        dst_mask_limit=None,
+        base_dir=None,
+        encoding="utf-8"
+    ):
+        for root, _, files in os.walk(base_dir):
+            for file in files:
+                if file == filename:
+                    full_path = os.path.join(root, file)
+                    try:
+                        with open(full_path, "r", encoding=encoding, errors="ignore") as f:
+                            config_text = f.read()
+                    except Exception:
+                        continue
+                    parser = cls(config_text)
+                    return parser.find_acl_matches(
+                        src_ip,
+                        dst_ip,
+                        strict_mode=strict_mode,
+                        ignore_src_any=ignore_src_any,
+                        ignore_dst_any=ignore_dst_any,
+                        src_mask_limit=src_mask_limit,
+                        dst_mask_limit=dst_mask_limit
+                    )
+        return tuple()
+
+    def parse(self):
+        self._parse_objects()
+        self._parse_object_groups()
+        self._parse_acls()
+
+    def _parse_objects(self):
+        current_name = None
+        current_values = []
+
+        for line in self.config_lines:
+            line = line.strip()
+            if line.startswith("object network "):
+                if current_name:
+                    self.objects[current_name] = current_values
+                current_name = line.split("object network ")[1]
+                current_values = []
+            elif line.startswith("host "):
+                ip = line.split()[1]
+                current_values.append(ip + "/32")
+            elif line.startswith("range "):
+                parts = line.split()
+                current_values.extend(self._expand_ip_range(parts[1], parts[2]))
+            elif line.startswith("subnet "):
+                parts = line.split()
+                try:
+                    network = ipaddress.ip_network((parts[1], parts[2]), strict=False)
+                    current_values.append(str(network))
+                except ValueError:
+                    continue
+        if current_name:
+            self.objects[current_name] = current_values
+
+    def _parse_object_groups(self):
+        current_group = None
+        current_values = []
+
+        for line in self.config_lines:
+            line = line.strip()
+            if line.startswith("object-group network "):
+                if current_group:
+                    self.object_groups[current_group] = current_values
+                current_group = line.split("object-group network ")[1]
+                current_values = []
+            elif line.startswith("network-object host "):
+                ip = line.split()[-1]
+                current_values.append(ip + "/32")
+            elif line.startswith("network-object object "):
+                obj = line.split()[-1]
+                current_values.extend(self.objects.get(obj, []))
+            elif line.startswith("network-object "):
+                parts = line.split()
+                if len(parts) == 3:
+                    try:
+                        network = ipaddress.ip_network((parts[1], parts[2]), strict=False)
+                        current_values.append(str(network))
+                    except ValueError:
+                        continue
+            elif line.startswith("group-object "):
+                ref = line.split()[-1]
+                current_values.append(("group", ref))
+        if current_group:
+            self.object_groups[current_group] = current_values
+
+        for group, values in list(self.object_groups.items()):
+            expanded = []
+            for val in values:
+                if isinstance(val, tuple) and val[0] == "group":
+                    expanded.extend(self._resolve_group(val[1]))
+                else:
+                    expanded.append(val)
+            self.object_groups[group] = expanded
+
+    def _parse_acls(self):
+        for line in self.config_lines:
+            line = line.strip()
+            if line.startswith("access-list ") and not ("remark" in line or "description" in line):
+                self.acl_lines.append(line)
+
+    def _expand_ip_range(self, start_ip, end_ip):
+        try:
+            start = ipaddress.IPv4Address(start_ip)
+            end = ipaddress.IPv4Address(end_ip)
+            return [(start, end)]
+        except ValueError:
+            return []
+
+    def _resolve_group(self, name):
+        results = []
+        visited = set()
+
+        def _resolve(n):
+            if n in visited:
+                return
+            visited.add(n)
+            if n in self.object_groups:
+                for val in self.object_groups[n]:
+                    if isinstance(val, tuple) and val[0] == "group":
+                        _resolve(val[1])
+                    else:
+                        results.append(val)
+            elif n in self.objects:
+                results.extend(self.objects[n])
+
+        _resolve(name)
+        return results
+
+    def _resolve_entry(self, entry):
+        if not entry or entry == "any" or entry == "any4":
+            return ["any"]
+        if isinstance(entry, tuple):
+            return [entry]
+        if "/" in entry or self._is_ip(entry):
+            return [entry]
+        if entry in self.objects:
+            return self.objects[entry]
+        if entry in self.object_groups:
+            return self.object_groups[entry]
+        return []
+
+    def _is_ip(self, s):
+        try:
+            ipaddress.ip_address(s)
+            return True
+        except ValueError:
+            return False
+
+    def _is_dotted_decimal(self, s):
+        parts = s.split('.')
+        if len(parts) != 4:
+            return False
+        for p in parts:
+            if not p.isdigit() or not 0 <= int(p) <= 255:
+                return False
+        return True
+
+    def _cand_to_net(self, cand):
+        try:
+            if isinstance(cand, str):
+                if '/' in cand:
+                    return ipaddress.ip_network(cand, strict=False)
+                elif ' ' in cand:
+                    parts = cand.split()
+                    if len(parts) == 2:
+                        return ipaddress.ip_network((parts[0], parts[1]), strict=False)
+                else:
+                    return ipaddress.ip_network(cand + '/32', strict=False)
+            elif isinstance(cand, tuple):
+                if len(cand) == 3 and cand[0] == 'netmask':
+                    return ipaddress.ip_network((cand[1], cand[2]), strict=False)
+                elif len(cand) == 2:
+                    if cand[0] == cand[1]:
+                        return ipaddress.ip_network(str(cand[0]) + '/32', strict=False)
+                    else:
+                        return None
+        except ValueError:
+            return None
+        return None
+
+    def _matches(self, input_str, candidates, strict_mode, ignore_any=False, mask_limit=None):
+        # 1. Если кандидат "any" и включен флаг ignore_any — бракуем сразу
+        if ignore_any and candidates == ["any"]:
+            return False
+
+        # Поведение по умолчанию для any (если ignore_any=False)
+        if input_str == "any":
+            return True
+
+        try:
+            input_ip = ipaddress.ip_address(input_str)
+            input_net_32 = ipaddress.ip_network(str(input_ip) + '/32', strict=False)
+
+            for cand in candidates:
+                cand_net = self._cand_to_net(cand)
+
+                # 2. Если включен mask_limit, проверяем длину префикса сети-кандидата
+                if mask_limit is not None and cand_net is not None:
+                    # Чем МЕНЬШЕ prefixlen, тем ШИРЕ сеть (/24 меньше чем /29).
+                    # Если сеть кандидата шире установленного лимита — игнорируем candidate.
+                    if cand_net.prefixlen < mask_limit:
+                        continue
+
+                # Режим строгого совпадения (только exact /32)
+                if strict_mode:
+                    if cand_net and cand_net == input_net_32:
+                        return True
+                else:
+                    # Обычный режим вхождения IP в сеть/диапазон
+                    try:
+                        if isinstance(cand, tuple):
+                            if len(cand) == 3 and cand[0] == 'netmask':
+                                net = ipaddress.ip_network((cand[1], cand[2]), strict=False)
+                                if input_ip in net:
+                                    return True
+                            elif len(cand) == 2:
+                                start, end = cand
+                                # Диапазон не имеет строгого CIDR, но если mask_limit задан,
+                                # можно отсекать диапазоны шириной больше допустимого лимита:
+                                if mask_limit is not None:
+                                    range_size = int(end) - int(start) + 1
+                                    max_size = 2 ** (32 - mask_limit)
+                                    if range_size > max_size:
+                                        continue
+                                if start <= input_ip <= end:
+                                    return True
+                        elif cand.startswith("host "):
+                            cand_ip = cand.split()[1]
+                            if input_ip == ipaddress.ip_address(cand_ip):
+                                return True
+                        elif cand_net:
+                            if input_ip in cand_net:
+                                return True
+                    except Exception:
+                        continue
+            return False
+        except ValueError:
+            return False
+
+    def _extract_src_dst(self, parts):
+        i = 4
+        if parts[i] in ['ip', 'tcp', 'udp', 'icmp']:
+            i += 1
+        elif i < len(parts) and parts[i] == 'object-group':
+            i += 2
+
+        def parse_entry(idx):
+            if idx >= len(parts):
+                return None, idx + 1
+            if parts[idx] in ("object-group", "object"):
+                return parts[idx + 1], idx + 2
+            elif parts[idx] == "host":
+                return parts[idx + 1] + "/32", idx + 2
+            elif parts[idx] == "any" or parts[idx] == "any4":
+                return "any", idx + 1
+            elif self._is_ip(parts[idx]):
+                if idx + 1 < len(parts) and self._is_dotted_decimal(parts[idx + 1]):
+                    second = parts[idx + 1]
+                    if second.startswith('255'):
+                        return ('netmask', parts[idx], second), idx + 2
+                    else:
+                        try:
+                            start = ipaddress.ip_address(parts[idx])
+                            end = ipaddress.ip_address(second)
+                            if start > end:
+                                start, end = end, start
+                            return (start, end), idx + 2
+                        except ValueError:
+                            return parts[idx] + "/32", idx + 1
+                else:
+                    return parts[idx] + "/32", idx + 1
+            return None, idx + 1
+
+        src, i = parse_entry(i)
+        dst, i = parse_entry(i)
+        return src, dst
+
+    def find_acl_matches(
+        self,
+        src_ip,
+        dst_ip,
+        strict_mode=False,
+        ignore_src_any=False,
+        ignore_dst_any=False,
+        src_mask_limit=None,
+        dst_mask_limit=None
+    ):
+        matches = set()
+        for line in self.acl_lines:
+            parts = line.split()
+            if len(parts) < 7:
+                continue
+            try:
+                src_entry, dst_entry = self._extract_src_dst(parts)
+                src_ips = self._resolve_entry(src_entry)
+                dst_ips = self._resolve_entry(dst_entry)
+
+                if src_ips == ["any"] and dst_ips == ["any"]:
+                    continue
+
+                src_ok = self._matches(
+                    src_ip,
+                    src_ips,
+                    strict_mode,
+                    ignore_any=ignore_src_any,
+                    mask_limit=src_mask_limit
+                )
+                dst_ok = self._matches(
+                    dst_ip,
+                    dst_ips,
+                    strict_mode,
+                    ignore_any=ignore_dst_any,
+                    mask_limit=dst_mask_limit
+                )
+
+                if src_ok and dst_ok:
+                    matches.add(line)
+            except Exception:
+                continue
+        return matches
 class FortiOSParser:
     def __init__(self, config_text):
         self.config_text = config_text

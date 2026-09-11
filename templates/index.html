@@ -11,7 +11,7 @@
 <body>
 
     <header>
-        <h1>    🔍 ACL Parser v0.84</h1>
+        <h1>    🔍 ACL Parser v0.86</h1>
     </header>
     <div class="top-card">
 
@@ -20,7 +20,7 @@
             <button onclick="openHelp()" class="btn-help" title="Справка">?</button>
         </div>
 
-        <!-- ... ваши остальные элементы карточки (Source or Destination, Реверс IP и т.д.) ... -->
+        <!-- ... все остальные элементы карточки (Source or Destination, Реверс IP и т.д.) ... -->
 
     </div>
     <div class="main-container">
@@ -37,6 +37,30 @@
                        onblur="if(this.value==='') this.placeholder='any'"
                        maxlength="50"
                 >
+                                <select id="src_mask_limit" class="mask-select" title="Лимит маски поиска">
+                    <option value="">lim</option>
+                    <option value="32">/32</option>
+                    <option value="31">/31</option>
+                    <option value="30">/30</option>
+                    <option value="29">/29</option>
+                    <option value="28">/28</option>
+                    <option value="27">/27</option>
+                    <option value="26">/26</option>
+                    <option value="25">/25</option>
+                    <option value="24">/24</option>
+                    <option value="23">/23</option>
+                    <option value="22">/22</option>
+                    <option value="21">/21</option>
+                    <option value="20">/20</option>
+                    <option value="19">/19</option>
+                    <option value="18">/18</option>
+                    <option value="17">/17</option>
+                    <option value="16">/16</option>
+                    <option value="8">/8</option>
+                </select>
+                <label class="not-any-label" title="Игнорировать значение any">
+                <input type="checkbox" id="src_not_any"> !ANY
+                </label>
             </div>
 
 <!-- Destination IP -->
@@ -49,6 +73,30 @@
                        onfocus="this.placeholder=''"
                        onblur="if(this.value==='') this.placeholder='any'"
                        maxlength="50">
+                                <select id="dst_mask_limit" class="mask-select" title="Лимит маски поиска">
+                    <option value="">lim</option>
+                    <option value="32">/32</option>
+                    <option value="31">/31</option>
+                    <option value="30">/30</option>
+                    <option value="29">/29</option>
+                    <option value="28">/28</option>
+                    <option value="27">/27</option>
+                    <option value="26">/26</option>
+                    <option value="25">/25</option>
+                    <option value="24">/24</option>
+                    <option value="23">/23</option>
+                    <option value="22">/22</option>
+                    <option value="21">/21</option>
+                    <option value="20">/20</option>
+                    <option value="19">/19</option>
+                    <option value="18">/18</option>
+                    <option value="17">/17</option>
+                    <option value="16">/16</option>
+                    <option value="8">/8</option>
+                </select>
+                <label class="not-any-label" title="Игнорировать значение any">
+                <input type="checkbox" id="dst_not_any"> !ANY
+                </label>
             </div>
 
 <!-- Чекбоксы + Кнопки в одну строку -->
@@ -70,9 +118,12 @@
 
                 <!-- Правая часть - кнопки -->
                 <div class="action-buttons">
-                    <button onclick="resetIPs()" class="btn-secondary">Сброс IP</button>
+                    <button id="btn-reset" onclick="resetIPs()" class="btn-secondary">Сброс IP</button>
                     <button onclick="reverseIPs()" class="btn-secondary">Реверс IP</button>
                 </div>
+
+                <!-- Выпадающее меню для Source IP -->
+
             </div>
 
         </div>
