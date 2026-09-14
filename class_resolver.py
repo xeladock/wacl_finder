@@ -1068,7 +1068,7 @@ class CiscoASAParser4:
         ignore_dst_any=False,
         src_mask_limit=None,
         dst_mask_limit=None,
-        base_dir=None,
+        base_dir=base_dir,
         encoding="utf-8"
     ):
         for root, _, files in os.walk(base_dir):
@@ -1251,35 +1251,56 @@ class CiscoASAParser4:
         return None
 
     def _matches(self, input_str, candidates, strict_mode, ignore_any=False, mask_limit=None):
-        # 1. Если кандидат "any" и включен флаг ignore_any — бракуем сразу
-        if ignore_any and candidates == ["any"]:
+        # 1. Если активирован ignore_any и в кандидатах "any" — отбрасываем
+        if ignore_any and ("any" in candidates or candidates == ["any"]):
             return False
 
-        # Поведение по умолчанию для any (если ignore_any=False)
+        # 2. Если в строке поиска передано "any"
         if input_str == "any":
+            if strict_mode:
+                return "any" in candidates or candidates == ["any"]
             return True
 
+        # 3. Преобразуем пользовательский ввод (input_str) в IP или Сеть
+        input_net = None
+        input_ip = None
+
         try:
-            input_ip = ipaddress.ip_address(input_str)
-            input_net_32 = ipaddress.ip_network(str(input_ip) + '/32', strict=False)
+            if "/" in input_str:
+                input_net = ipaddress.ip_network(input_str, strict=False)
+            else:
+                input_ip = ipaddress.ip_address(input_str)
+                input_net = ipaddress.ip_network(f"{input_str}/32", strict=False)
+        except ValueError:
+            return False
 
-            for cand in candidates:
-                cand_net = self._cand_to_net(cand)
+        # 4. Проверяем кандидатов
+        for cand in candidates:
+            if cand == "any":
+                return True
 
-                # 2. Если включен mask_limit, проверяем длину префикса сети-кандидата
-                if mask_limit is not None and cand_net is not None:
-                    # Чем МЕНЬШЕ prefixlen, тем ШИРЕ сеть (/24 меньше чем /29).
-                    # Если сеть кандидата шире установленного лимита — игнорируем candidate.
-                    if cand_net.prefixlen < mask_limit:
-                        continue
+            cand_net = self._cand_to_net(cand)
 
-                # Режим строгого совпадения (только exact /32)
-                if strict_mode:
-                    if cand_net and cand_net == input_net_32:
-                        return True
-                else:
-                    # Обычный режим вхождения IP в сеть/диапазон
-                    try:
+            # Проверка лимита маски
+            if mask_limit is not None and cand_net is not None:
+                if cand_net.prefixlen < mask_limit:
+                    continue
+
+            # --- РЕЖИМ 1: STRICT MODE ---
+            if strict_mode:
+                if cand_net and cand_net == input_net:
+                    return True
+
+            # --- РЕЖИМ 2: ОБЫЧНЫЙ ПОИСК (Вхождение / Пересечение) ---
+            else:
+                try:
+                    # Если пользователь ввёл СЕТЬ (например, 10.240.0.0/16)
+                    if "/" in input_str and cand_net:
+                        if input_net.overlaps(cand_net):
+                            return True
+
+                    # Если пользователь ввёл ОДИНОЧНЫЙ IP (например, 10.240.0.1)
+                    elif input_ip:
                         if isinstance(cand, tuple):
                             if len(cand) == 3 and cand[0] == 'netmask':
                                 net = ipaddress.ip_network((cand[1], cand[2]), strict=False)
@@ -1287,8 +1308,6 @@ class CiscoASAParser4:
                                     return True
                             elif len(cand) == 2:
                                 start, end = cand
-                                # Диапазон не имеет строгого CIDR, но если mask_limit задан,
-                                # можно отсекать диапазоны шириной больше допустимого лимита:
                                 if mask_limit is not None:
                                     range_size = int(end) - int(start) + 1
                                     max_size = 2 ** (32 - mask_limit)
@@ -1296,18 +1315,75 @@ class CiscoASAParser4:
                                         continue
                                 if start <= input_ip <= end:
                                     return True
-                        elif cand.startswith("host "):
+                        elif isinstance(cand, str) and cand.startswith("host "):
                             cand_ip = cand.split()[1]
                             if input_ip == ipaddress.ip_address(cand_ip):
                                 return True
                         elif cand_net:
                             if input_ip in cand_net:
                                 return True
-                    except Exception:
-                        continue
-            return False
-        except ValueError:
-            return False
+                except Exception:
+                    continue
+
+        return False
+    # def _matches(self, input_str, candidates, strict_mode, ignore_any=False, mask_limit=None):
+    #     # 1. Если кандидат "any" и включен флаг ignore_any — бракуем сразу
+    #     if ignore_any and candidates == ["any"]:
+    #         return False
+    #
+    #     # Поведение по умолчанию для any (если ignore_any=False)
+    #     if input_str == "any":
+    #         return True
+    #
+    #     try:
+    #         input_ip = ipaddress.ip_address(input_str)
+    #         input_net_32 = ipaddress.ip_network(str(input_ip) + '/32', strict=False)
+    #
+    #         for cand in candidates:
+    #             cand_net = self._cand_to_net(cand)
+    #
+    #             # 2. Если включен mask_limit, проверяем длину префикса сети-кандидата
+    #             if mask_limit is not None and cand_net is not None:
+    #                 # Чем МЕНЬШЕ prefixlen, тем ШИРЕ сеть (/24 меньше чем /29).
+    #                 # Если сеть кандидата шире установленного лимита — игнорируем candidate.
+    #                 if cand_net.prefixlen < mask_limit:
+    #                     continue
+    #
+    #             # Режим строгого совпадения (только exact /32)
+    #             if strict_mode:
+    #                 if cand_net and cand_net == input_net_32:
+    #                     return True
+    #             else:
+    #                 # Обычный режим вхождения IP в сеть/диапазон
+    #                 try:
+    #                     if isinstance(cand, tuple):
+    #                         if len(cand) == 3 and cand[0] == 'netmask':
+    #                             net = ipaddress.ip_network((cand[1], cand[2]), strict=False)
+    #                             if input_ip in net:
+    #                                 return True
+    #                         elif len(cand) == 2:
+    #                             start, end = cand
+    #                             # Диапазон не имеет строгого CIDR, но если mask_limit задан,
+    #                             # можно отсекать диапазоны шириной больше допустимого лимита:
+    #                             if mask_limit is not None:
+    #                                 range_size = int(end) - int(start) + 1
+    #                                 max_size = 2 ** (32 - mask_limit)
+    #                                 if range_size > max_size:
+    #                                     continue
+    #                             if start <= input_ip <= end:
+    #                                 return True
+    #                     elif cand.startswith("host "):
+    #                         cand_ip = cand.split()[1]
+    #                         if input_ip == ipaddress.ip_address(cand_ip):
+    #                             return True
+    #                     elif cand_net:
+    #                         if input_ip in cand_net:
+    #                             return True
+    #                 except Exception:
+    #                     continue
+    #         return False
+    #     except ValueError:
+    #         return False
 
     def _extract_src_dst(self, parts):
         i = 4

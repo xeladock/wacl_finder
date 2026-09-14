@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse,RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List
+# from typing import Optional
+from typing import List, Optional
 from starlette.responses import StreamingResponse, JSONResponse
 
 # Импортируем твой парсер
@@ -80,6 +81,10 @@ class SearchRequest(BaseModel):
     ues: List[str] = []
     regions: List[str] = []
     vendors: List[str] = []
+    ignore_src_any: bool = False
+    ignore_dst_any: bool = False
+    src_mask_limit: Optional[int] = None
+    dst_mask_limit: Optional[int] = None
 
 @app.get("/")
 async def index():
@@ -166,7 +171,11 @@ async def search(request: SearchRequest):
 
                     # 1. Прямой поиск: Source IP -> any
                     gen1 = parse_acl_main(tmp_ip, "any", request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode)
+                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
+                                                            ignore_dst_any=request.ignore_dst_any,
+                                                            src_mask_limit=request.src_mask_limit,
+                                                            dst_mask_limit=request.dst_mask_limit)
+
                     async for chunk in stream_from_generator(
                             gen1,
                             f"--- Поиск: {tmp_ip} → any ---\n",
@@ -177,7 +186,10 @@ async def search(request: SearchRequest):
 
                     # 2. Обратный поиск: any -> Source IP
                     gen2 = parse_acl_main("any", tmp_ip, request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode)
+                                          request.strict_mode, request.strict_mode, ignore_src_any=request.ignore_src_any,
+                                        ignore_dst_any=request.ignore_dst_any,
+                                        src_mask_limit=request.src_mask_limit,
+                                        dst_mask_limit=request.dst_mask_limit)
                     async for chunk in stream_from_generator(
                             gen2,
                             f"\n--- 🔄 Обратный поиск: any → {tmp_ip} ---\n",
@@ -192,7 +204,10 @@ async def search(request: SearchRequest):
 
                     # 1. Прямой поиск: any -> Destination IP
                     gen1 = parse_acl_main("any", tmp_ip, request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode)
+                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
+                ignore_dst_any=request.ignore_dst_any,
+                src_mask_limit=request.src_mask_limit,
+                dst_mask_limit=request.dst_mask_limit)
                     async for chunk in stream_from_generator(
                             gen1,
                             f"--- Поиск: any → {tmp_ip} ---\n",
@@ -203,7 +218,9 @@ async def search(request: SearchRequest):
 
                     # 2. Обратный поиск: Destination IP -> any
                     gen2 = parse_acl_main(tmp_ip, "any", request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode)
+                                          request.strict_mode, ignore_dst_any=request.ignore_dst_any,
+                            src_mask_limit=request.src_mask_limit,
+                            dst_mask_limit=request.dst_mask_limit)
                     async for chunk in stream_from_generator(
                             gen2,
                             f"\n--- 🔄 Обратный поиск: {tmp_ip} → any ---\n",
@@ -212,8 +229,12 @@ async def search(request: SearchRequest):
                     ):
                         yield chunk
             else:
+                print("req_any_dst: ",request.ignore_dst_any)
                 generator = parse_acl_main(request.source_ip, request.dest_ip, request.regions, allowed_platforms,
-                                           request.ues, request.strict_mode)
+                                           request.ues, request.strict_mode, ignore_src_any=request.ignore_src_any,
+                            ignore_dst_any=request.ignore_dst_any,
+                            src_mask_limit=request.src_mask_limit,
+                            dst_mask_limit=request.dst_mask_limit)
                 async for chunk in stream_from_generator(generator, f"--- Поиск: {request.source_ip} → {request.dest_ip} ---\n", request.source_ip, request.dest_ip):
                     yield chunk
 

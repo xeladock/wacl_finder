@@ -4,7 +4,7 @@ import requests
 from urllib3.exceptions import InsecureRequestWarning
 from collections import defaultdict
 from class_resolver import (CiscoNexusParser, JuniperACLParser, FortiOSParser,
-                            CiscoIOSXEParser, CiscoIOSParser, EltexACLParser, CiscoASAParser3, EltexESRParser,
+                            CiscoIOSXEParser, CiscoIOSParser, EltexACLParser, CiscoASAParser4, EltexESRParser,
                             HPEParser, HuaweiParser3
                             )
 
@@ -49,11 +49,13 @@ FIX_LABELS = {"КЦ": "CEMS",
     "Сибирь": "SI"}
 
 PARSERS_MAP = {
-    'Cisco ASA': CiscoASAParser3,
-    'Cisco FXOS': CiscoASAParser3,
-    'Cisco PIX': CiscoASAParser3,
+    'Cisco ASA': CiscoASAParser4,
+    'Cisco FXOS': CiscoASAParser4,
+    'Cisco PIX': CiscoASAParser4,
     'FortiOS': FortiOSParser,
     'Cisco IOS': CiscoIOSParser,
+    'Cisco IOS XE': CiscoIOSXEParser,
+    'Cisco IOS XR': CiscoIOSXEParser,
     'HP ProCurve': CiscoIOSParser,
     'B4COM BCOM-OS-DC': CiscoIOSParser,
     'B4COM BCOM-OS-DC (VXLAN)': CiscoIOSParser,
@@ -82,7 +84,8 @@ def region(vv):
     # print("vv:",vv)
     return region_name
 
-def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False):
+def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False,ignore_src_any=False,
+        ignore_dst_any=False, src_mask_limit=None, dst_mask_limit=None):
     # print(allowed_prefixes, allowed_platforms,allowed_ues)
     # print("output dir is:",output_dir)
     # print("здесь 1:", APP_DIR)
@@ -92,19 +95,20 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
     dd = defaultdict(list)
     # print("base dd")
     # prefix_to_region = {v: k for k, v in PREFIX_LABELS.items()}
+    print("begis any_boxes is: ", ignore_src_any, ignore_dst_any)
     for root, dirs, files in os.walk(output_dir,followlinks=True):
         # print("rdf", root, dirs, files)
         # parts = root.split(os.sep)[1:]
         parts = root.lstrip(os.sep).split(os.sep)
-        print("parts is:", parts)
+        # print("parts is:", parts)
         if len(parts) <= 4:
-            print("path is:",len(parts))
+            # print("path is:",len(parts))
             continue
         # print("переход!")
         loc = parts[-2]  # ЛВС / ЦОД
 
         pl = parts[-1]  # платформа (Cisco, FortiOS, Huawei...)
-        print("allowed_ues is:",allowed_ues, loc, pl)
+        # print("allowed_ues is:",allowed_ues, loc, pl)
         # print("loc pl is:",loc,pl)
         # print("loc pl is:", loc, pl)
         # Фильтрация
@@ -113,7 +117,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
             continue
 
             # Фильтр по платформе
-        print("allowed_platforms is:",allowed_platforms)
+        # print("allowed_platforms is:",allowed_platforms)
         if pl not in allowed_platforms:
             continue
         # print("фин пре: ", loc,pl)
@@ -144,6 +148,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
     # print("allowed_platforms:", allowed_platforms)
     # print("dd: ",dd)
     res_device=defaultdict(list)
+    # ignore_dst_any=True
     for (k1, k2), v in dd.items():
         # print("k2 is:", k2)
         if allowed_platforms and k2 not in allowed_platforms:
@@ -151,7 +156,9 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
         parser_cls = PARSERS_MAP.get(k2)
         if parser_cls:
             for vv in v:
-                res = parser_cls.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                res = parser_cls.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
+        ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
+                print("any_boxes is: ",ignore_src_any, ignore_dst_any)
                 if res:
                     res_device[k1, region(vv)].append(vv)
                     yield f"----{k2} {k1} ({region(vv)})----"

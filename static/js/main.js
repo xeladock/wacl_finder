@@ -243,6 +243,9 @@ async function performSearch() {
     const srcValue = srcInput.value.trim();
     const dstValue = dstInput.value.trim();
     const sorMode = document.getElementById('source_or_dest').checked;
+    const srcMaskVal = document.getElementById('src_mask_limit').value;
+    const dstMaskVal = document.getElementById('dst_mask_limit').value;
+
 
     if (sorMode) {
         const srcFilled = srcValue && srcValue !== 'any';
@@ -258,6 +261,8 @@ async function performSearch() {
         }
     }
 
+
+
     const data = {
         source_ip: srcValue || 'any',
         dest_ip: dstValue || 'any',
@@ -265,18 +270,33 @@ async function performSearch() {
         sod: sorMode,
         ues: ues,
         regions: regions,
-        vendors: vendors
+        vendors: vendors,
+        ignore_src_any: document.getElementById('src_not_any').checked,
+        ignore_dst_any: document.getElementById('dst_not_any').checked,
+        src_mask_limit: srcMaskVal ? parseInt(srcMaskVal, 10) : null,
+        dst_mask_limit: dstMaskVal ? parseInt(dstMaskVal, 10) : null
     };
 
+
+
+
     if (!isValidIPorNetwork(data.source_ip)) {
-        alert("❌ Неверный формат Source IP: " + data.source_ip + "\n\nДолжен быть IP-адрес или сеть (например 10.0.0.0/8)/");
+        alert("❌ Неверный формат Source IP: " + data.source_ip + "\n\nДолжен быть IP-адрес или сеть (например 10.0.0.0/8)");
         return;
     }
 
     if (!isValidIPorNetwork(data.dest_ip)) {
-        alert("❌ Неверный формат Destination IP: " + data.dest_ip + "\n\nДолжен быть IP-адрес или сеть (например 10.0.0.0/8)/");
+        alert("❌ Неверный формат Destination IP: " + data.dest_ip + "\n\nДолжен быть IP-адрес или сеть (например 10.0.0.0/8)");
         return;
     }
+
+    if (data.strict_mode){
+        const srcFilled = srcValue && srcValue !== 'any';
+        const dstFilled = dstValue && dstValue !== 'any';
+            if(!srcFilled && !dstFilled) {
+        alert ("❌ Нет данных IP для поиска.")
+        return;
+        }}
 
     // === 2. СОСТОЯНИЕ "ПОИСК" ===
     isSearching = true;
@@ -639,12 +659,12 @@ function isValidIPorNetwork(str) {
 
         for (let num of ip) {
             const n = parseInt(num);
-            if (n < 0 || n > 255) return false;
+            if (n <= 0 || n > 255) return false;
         }
 
         if (parts.length === 2) {
             const mask = parseInt(parts[1]);
-            if (mask < 0 || mask > 32) return false;
+            if (mask <= 0 || mask > 32) return false;
         }
 
     return true;

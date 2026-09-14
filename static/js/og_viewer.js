@@ -247,6 +247,7 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         downloadResult();
 
+
     }
 if (e.key === 'F1') {
         e.preventDefault(); // Блокируем стандартную справку браузера/ОС
