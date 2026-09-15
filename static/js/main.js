@@ -156,7 +156,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 });
- 
+
+async function exportData(format) {
+    // Получаем текущие результаты поиска из глобальной переменной или UI
+    const currentResults = window.lastSearchResults;
+
+    if (!currentResults || currentResults.length === 0) {
+        alert("Нет данных для сохранения");
+        return;
+    }
+
+    const response = await fetch(`/export/${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentResults)
+    });
+
+    if (!response.ok) {
+        alert("Ошибка при выгрузке файла");
+        return;
+    }
+
+    // Скачивание файла через BLOB
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `acl_results.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
+function toggleDownloadMenu(event) {
+    event.stopPropagation(); // Предотвращаем мгновенное закрытие
+    const menu = document.getElementById('download-menu');
+    menu.classList.toggle('show');
+}
+
+// Автоматическое закрытие меню при клике в любое другое место
+document.addEventListener('click', function(event) {
+    const menu = document.getElementById('download-menu');
+    if (menu && menu.classList.contains('show')) {
+        menu.classList.remove('show');
+    }
+});
 
     let isSearching = false;
     let abortController = null;
@@ -669,8 +713,21 @@ function isValidIPorNetwork(str) {
 
     return true;
 }
+
+function getLocalFilename(extension) {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    return `acl_search_result_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.${extension}`;
+}
        
-function downloadResult() {
+function DownloadResultTXT() {
     const saveBtn = document.getElementById('save-btn');
 
         // Если кнопка заблокирована — игнорируем вызов (в том числе по Ctrl+S)
@@ -682,7 +739,7 @@ function downloadResult() {
 
     if (!pre || !pre.textContent.trim()) {
             setTimeout(() => {
-                alert("Нет данных для сохранения!");
+                alert("❌ Нет данных для сохранения!");
             }, 30);
 
             return;
@@ -694,10 +751,85 @@ function downloadResult() {
 
         const a = document.createElement('a');
         a.href = url;
-        a.download = `acl_search_result_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
+        a.download = getLocalFilename('txt');
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
    
+async function downloadXLSX() {
+    const pre = document.querySelector('pre');
+    if (!pre || !pre.textContent.trim()) {
+        alert("❌ Нет данных для сохранения!");
+        return;
+    }
+
+    const lines = pre.textContent.trim().split('\n').filter(l => l.trim() !== '');
+    const payload = lines.map(line => ({ acl_line: line.trim() }));
+
+    try {
+        const response = await fetch('/export/excel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = getLocalFilename('xlsx');
+//        a.download = 'acl_results.xlsx';
+        document.body.appendChild(a);
+        a.click();
+
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error("Ошибка XLSX:", err);
+        alert("❌ Не удалось экспортировать в Excel");
+    }
+}
+
+// --- 3. ЭКСПОРТ В CSV (Через FastAPI / csv) ---
+async function downloadCSV() {
+    const pre = document.querySelector('pre');
+    if (!pre || !pre.textContent.trim()) {
+        alert("❌ Нет данных для сохранения!");
+        return;
+    }
+
+    const lines = pre.textContent.trim().split('\n').filter(l => l.trim() !== '');
+    const payload = lines.map(line => ({ acl_line: line.trim() }));
+
+    try {
+        const response = await fetch('/export/csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = getLocalFilename('csv');
+//        a.download = 'acl_results.csv';
+        document.body.appendChild(a);
+        a.click();
+
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error("Ошибка CSV:", err);
+        alert("❌ Не удалось экспортировать в CSV");
+    }
+}
+
+//подсказки
+

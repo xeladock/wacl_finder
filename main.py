@@ -1,20 +1,22 @@
 import asyncio
+import csv
 import glob
+import io
 
+import openpyxl
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse,RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-# from typing import Optional
 from typing import List, Optional
 from starlette.responses import StreamingResponse, JSONResponse
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 # Импортируем твой парсер
 from Api_search3 import main as parse_acl_main
 from unpack_group_gui import router as og_router
 from gui_fgpf_2 import router as nb_router
 
-import sys
 import os
 # from pathlib import Path
 
@@ -115,6 +117,9 @@ async def search(request: SearchRequest):
                     if v in PLATFORM_GROUPS:
                         allowed_platforms.update(PLATFORM_GROUPS[v])
 
+            if request.strict_mode:
+                fs = "Строгий поиск"
+            else: fs = "Поиск"
 
             yield f"Выбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
 
@@ -178,7 +183,7 @@ async def search(request: SearchRequest):
 
                     async for chunk in stream_from_generator(
                             gen1,
-                            f"--- Поиск: {tmp_ip} → any ---\n",
+                            f"--- {fs}: {tmp_ip} → any ---\n",
                             tmp_ip,
                             "any"
                     ):
@@ -210,7 +215,7 @@ async def search(request: SearchRequest):
                 dst_mask_limit=request.dst_mask_limit)
                     async for chunk in stream_from_generator(
                             gen1,
-                            f"--- Поиск: any → {tmp_ip} ---\n",
+                            f"--- {fs}: any → {tmp_ip} ---\n",
                             "any",
                             tmp_ip
                     ):
@@ -235,7 +240,7 @@ async def search(request: SearchRequest):
                             ignore_dst_any=request.ignore_dst_any,
                             src_mask_limit=request.src_mask_limit,
                             dst_mask_limit=request.dst_mask_limit)
-                async for chunk in stream_from_generator(generator, f"--- Поиск: {request.source_ip} → {request.dest_ip} ---\n", request.source_ip, request.dest_ip):
+                async for chunk in stream_from_generator(generator, f"--- {fs}: {request.source_ip} → {request.dest_ip} ---\n", request.source_ip, request.dest_ip):
                     yield chunk
 
             yield "\n✅ Поиск завершен.\n\n"
@@ -268,6 +273,132 @@ async def nb_get_help():
 @app.get("/nb-help", response_class=HTMLResponse)
 async def og_get_help():
     return FileResponse("static/html/help.html")
+
+
+@app.post("/export/excel")
+async def export_excel(payload: list[dict]):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "ACL Export"
+
+    ws.views.sheetView[0].showGridLines = True
+
+    # 1. Заголовки таблицы (теперь всего 2 столбца)
+    headers = ["Тип записи / Устройство", "Правило / Конфигурация (ACL / Term)"]
+    ws.append(headers)
+
+    # Стили заголовка
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+
+    for col_idx, cell in enumerate(ws[1], start=1):
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    # Стили метаданных
+    meta_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    meta_font = Font(name="Calibri", size=10, bold=True, italic=True)
+
+    current_device = "Общие параметры"
+
+    # 2. Заполнение данными
+    for item in payload:
+        raw_line = item.get("acl_line", "").strip()
+        if not raw_line:
+            continue
+
+        # Проверка условия метаданных
+        is_meta = raw_line.startswith(("Выбранные", "--", "🔍", "🎯", "✅")) or raw_line.endswith(":")
+
+        if is_meta:
+            if raw_line.endswith(":"):
+                current_device = raw_line.replace(":", "")
+
+            # Добавляем строку с текстом в первой ячейке
+            ws.append([raw_line, ""])
+            current_row = ws.max_row
+
+            # Объединяем столбцы A и B в текущей строке
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=2)
+
+            # Оформляем главную ячейку объединенного диапазона (A)
+            meta_cell = ws.cell(row=current_row, column=1)
+            meta_cell.fill = meta_fill
+            meta_cell.font = meta_font
+            meta_cell.alignment = Alignment(horizontal="center", vertical="center")
+        else:
+            ws.append([current_device, raw_line])
+            current_row = ws.max_row
+
+            ws.cell(row=current_row, column=1).alignment = Alignment(horizontal="left", vertical="top")
+            ws.cell(row=current_row, column=2).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+    # 3. Фиксированная ширина столбцов (A и B)
+    ws.column_dimensions['A'].width = 40
+    ws.column_dimensions['B'].width = 120
+
+    # 4. Автофильтр
+    ws.auto_filter.ref = ws.dimensions
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        headers={"Content-Disposition": 'attachment; filename="acl_results.xlsx"'},
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+@app.post("/export/csv")
+async def export_csv(data: list[dict]):
+    output = io.StringIO()
+    # Используем ';' как разделитель для корректного открытия в русскоязычном Excel
+    writer = csv.writer(output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+
+    # Заголовки
+    # writer.writerow([
+    #     "Метаданные / Имя устройства / Строка ACL",
+    #     "Элемент 1 (Action)",
+    #     "Элемент 2 (Protocol)",
+    #     "Элемент 3 (Src)",
+    #     "Элемент 4 (Dst)",
+    #     "Дополнительные параметры..."
+    # ])
+
+    # 2. Обработка входящих строк
+    for item in data:
+        raw_line = item.get("acl_line", "").strip()
+
+        if not raw_line:
+            continue
+
+        # Проверяем, является ли строка шапкой/подвалом/разделителем
+        is_metadata = (
+                raw_line.startswith(("Выбранные","--","🔍","🎯","✅")) or
+                raw_line.endswith(":")
+        )
+
+        if is_metadata:
+            # Записываем служебную строку в первую колонку без разбиения
+            writer.writerow([raw_line])
+        else:
+            # Разбиваем правило ACL по пробелам на элементы
+            tokens = raw_line.split()
+
+            # Первый столбец — полная исходная строка ACL, остальные — разбитые токены
+            row_data = tokens
+            writer.writerow(row_data)
+
+    # Добавляем BOM (utf-8-sig) в начало файла, чтобы Excel правильно понял кириллицу
+    csv_bytes = io.BytesIO(b'\xef\xbb\xbf' + output.getvalue().encode('utf-8'))
+
+    return StreamingResponse(
+        csv_bytes,
+        headers={"Content-Disposition": 'attachment; filename="acl_results.csv"'},
+        media_type="text/csv; charset=utf-8"
+    )
+
 
 @app.get("/healthz/live", status_code=200)
 async def liveness():
@@ -372,7 +503,7 @@ def get_error_html() -> str:
     <body>
         <div class="card">
             <h1>Сервис временно недоступен.</h1>
-            <p>Выполняется загрузка или обновление конфигураций.<br>Пожалуйста, обновите страницу через некоторое время.</p>
+            <p>Упс... В данный момент что-то пошло не так.<br>Пожалуйста, обновите страницу через некоторое время.</p>
         </div>
         <script>
             // Функция проверки готовности сервиса
@@ -391,8 +522,8 @@ def get_error_html() -> str:
                 }
             }
 
-            // Проверяем каждые 10 секунд (10000 мс)
-            // (10 секунд обычно удобнее для пользователя, чем 60, чтобы не ждать долго)
+            // Проверяем каждые 60 секунд (60000 мс)
+            // (60 секунд обычно удобнее для пользователя, чем 60, чтобы не ждать долго)
             setInterval(checkStatus,60000);
         </script>
     </body>

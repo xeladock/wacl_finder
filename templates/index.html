@@ -36,8 +36,10 @@
                        onfocus="this.placeholder=''"
                        onblur="if(this.value==='') this.placeholder='any'"
                        maxlength="50"
+
                 >
-                                <select id="src_mask_limit" class="mask-select" title="Лимит маски поиска src">
+                <div class="input-wrapper" data-tooltip="лимит маски src">
+                    <select id="src_mask_limit" class="mask-select">
                     <option value="">lim</option>
                     <option value="32">/32</option>
                     <option value="31">/31</option>
@@ -58,7 +60,8 @@
                     <option value="16">/16</option>
                     <option value="8">/8</option>
                 </select>
-                <label class="not-any-label" title="Игнорировать значение src any">
+                </div>
+                <label class="not-any-label" data-tooltip="Игнорировать значение src any">
                 <input type="checkbox" id="src_not_any"> !ANY
                 </label>
             </div>
@@ -73,7 +76,8 @@
                        onfocus="this.placeholder=''"
                        onblur="if(this.value==='') this.placeholder='any'"
                        maxlength="50">
-                                <select id="dst_mask_limit" class="mask-select" title="Лимит маски поиска dst">
+                                <div class="input-wrapper" data-tooltip="лимит маски dst">
+                    <select id="dst_mask_limit" class="mask-select">
                     <option value="">lim</option>
                     <option value="32">/32</option>
                     <option value="31">/31</option>
@@ -94,7 +98,8 @@
                     <option value="16">/16</option>
                     <option value="8">/8</option>
                 </select>
-                <label class="not-any-label" title="Игнорировать значение dst any">
+                                    </div>
+                <label class="not-any-label" data-tooltip="Игнорировать значение dst any">
                 <input type="checkbox" id="dst_not_any"> !ANY
                 </label>
             </div>
@@ -202,10 +207,21 @@
 
 
             <!-- Кнопка Скачать (вырвем из потока и прижмем вправо) -->
+<!--          <div class="download-container">-->
+<!--                <button onclick="downloadResult()" id="save-btn" class="btn-download">-->
+<!--                    💾 Сохранить в файл-->
+<!--                </button>-->
+<!--            </div>-->
+
             <div class="download-container">
-                <button onclick="downloadResult()" id="save-btn" class="btn-download">
-                    💾 Сохранить в файл
+                <button id="save-btn" class="btn-download" onclick="toggleDownloadMenu(event)">
+                    💾 Сохранить в файл <span class="arrow">▼</span>
                 </button>
+                <div id="download-menu" class="download-menu">
+                    <button class="download-item" onclick="DownloadResultTXT()">📄 Сохранить в .txt</button>
+                    <button class="download-item" onclick="downloadXLSX()">📊 Сохранить в .xlsx</button>
+                    <button class="download-item" onclick="downloadCSV()">📋 Сохранить в .csv</button>
+                </div>
             </div>
 
 
@@ -223,5 +239,6 @@
     <!-- Ваша существующая форма -->
 
     <script src="/static/js/main.js" defer></script>
+<!--<div id="custom-tooltip" class="custom-tooltip"></div>-->
 </body>
 </html>

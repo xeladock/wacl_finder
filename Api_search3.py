@@ -153,16 +153,100 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
         # print("k2 is:", k2)
         if allowed_platforms and k2 not in allowed_platforms:
             continue
-        parser_cls = PARSERS_MAP.get(k2)
-        if parser_cls:
+        # parser_cls = PARSERS_MAP.get(k2)
+        if k2 in ('Cisco ASA', 'Cisco FXOS', 'Cisco PIX'):
+            # print(k ,v)
             for vv in v:
-                res = parser_cls.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
+                res = CiscoASAParser4.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
         ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
-                print("any_boxes is: ",ignore_src_any, ignore_dst_any)
+        # print(res)
                 if res:
                     res_device[k1, region(vv)].append(vv)
-                    yield f"----{k2} {k1} ({region(vv)})----"
-                    yield f"{vv}: \n" + "\n".join(res) + "\n"
+                    yield(f"----{k2} {k1} {region(vv)}----")
+                    yield(vv + ": \n" + "\n".join(res) + "\n")
+        elif k2 == 'FortiOS':
+            # print(k1,k2,v)
+            for vv in v:
+                res = FortiOSParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                # print(res)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+
+        elif k2 in (
+        'Cisco IOS', 'HP ProCurve', 'B4COM BCOM-OS-DC', 'B4COM BCOM-OS-DC (VXLAN)', 'EdgeCore', 'IBM_Lenovo Network OS',
+        'Dell Networking OS'):
+            for vv in v:
+                res = CiscoIOSParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+        elif k2 in ('Cisco IOS XE', 'Cisco IOS XR'):
+            for vv in v:
+                # print(vv)
+                res = CiscoIOSXEParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                # print(res)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+        elif k2 == 'Cisco NX-OS':
+            for vv in v:
+                res = CiscoNexusParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+
+        elif k2 in ('Huawei VRP', 'Huawei VRP 2403'):
+            for vv in v:
+                res = HuaweiParser3.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+
+        elif k2 == 'Juniper Junos':
+            for vv in v:
+                res = JuniperACLParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+
+        elif k2 == 'Eltex':
+            for vv in v:
+                res = EltexACLParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    # print(res)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+        elif k2 == 'Eltex ESR':
+            # print(v)
+            for vv in v:
+                res = EltexESRParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                # print(res)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+            # if k2  == 'HP ProCurve' :
+            #     for vv in v:
+            #         res = CiscoIOSParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+            #         if res:
+            #             yield(f"----{k2} {k1} {region(vv)}----")
+            #             yield(vv + ": \n" + "\n".join(res) + "\n")
+        elif k2 in ('HPE OfficeConnect', 'HPE Comware 1910', 'HPE Comware', '3Com Comware 1910'):
+            for vv in v:  # список файлов
+                res = HPEParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+
     if res_device:
         yield f"\n--------\n🔍 Найдены cовпадения на следующих устройствах: 🔍\n"
 

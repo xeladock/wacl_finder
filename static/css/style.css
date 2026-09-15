@@ -1,6 +1,6 @@
 html, body {
     /* Минимальная ширина всей страницы должна быть не меньше вашей формы + запас под кнопки */
-    min-width: 1900px !important; /* Настройте это число (например, 850px или 900px), чтобы влезли и форма, и кнопки справа */
+    min-width: 1920px !important; /* Настройте это число (например, 850px или 900px), чтобы влезли и форма, и кнопки справа */
     overflow-x: auto !important;  /* Позволяет появляться горизонтальной прокрутке */
 }
 
@@ -407,17 +407,6 @@ header h1 {
 }
 
 
-.download-container {
-    position: absolute;     /* Вырываем из потока */
-    right: 5px;             /* Сдвигаем в самый правый край */
-    top: 40px;               /* Центрируем по высоте */
-    transform: translateY(-50%); /* Идеальное выравнивание по высоте */
-    margin: 0;
-    padding: 0;
-    display: block;
-
-}
-
 
 
 /* Кнопка Поиск — большая */
@@ -446,6 +435,69 @@ header h1 {
     background-color: #1d4ed8;
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+/* Контейнер-родитель для правильного позиционирования */
+.download-container {
+    position: absolute;     /* Вырываем из потока */
+    right: 10px;             /* Сдвигаем в самый правый край */
+    top: 40px;               /* Центрируем по высоте */
+    transform: translateY(-50%); /* Идеальное выравнивание по высоте */
+    margin: 0;
+    padding: 0;
+    display: block;
+    z-index: 9999;
+}
+
+/* Выпадающий блок */
+.download-menu {
+    display: none; /* По умолчанию скрыто */
+    position: absolute;
+    top: 100%;
+    margin-top: 1px;
+    background-color: #ffffff;
+    min-width: 182px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 9999;
+    overflow: hidden;
+    padding: 4px 0; /* Небольшие отступы сверху и снизу */
+}
+
+/* Переключатель видимости */
+.download-menu.show {
+    display: flex;
+    flex-direction: column; /* Принудительно выстраиваем кнопки СВЕРХУ ВНИЗ */
+}
+
+/* Оформление каждого пункта (сброс системных рамок кнопок) */
+.download-item {
+    width: 100%;
+    padding: 10px 16px;
+    border: none; /* Убираем серо-белые рамки браузера */
+    background: none;
+    color: #2d3748;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Расстояние между иконкой и текстом */
+    box-sizing: border-box;
+}
+
+/* Эффект при наведении мышкой */
+.download-item:hover {
+    background-color: #edf2f7;
+    color: #2b6cb0;
+}
+/* Стрелочка у кнопки */
+.arrow {
+    font-size: 10px;
+    margin-left: 6px;
 }
 
 /**/
@@ -605,4 +657,65 @@ position: absolute;
     width: 16px;
     height: 16px;
     accent-color: #dc2626;
+}
+
+/*подсказки*/
+
+[data-tooltip] {
+    position: relative; /* Обязательно для позиционирования */
+}
+
+/* 2. Само всплывающее окно (стили, фон, отступы) */
+[data-tooltip] {
+    position: relative; /* Обязательно для позиционирования */
+}
+
+/* 2. Само всплывающее окно (стили, фон, отступы) */
+[data-tooltip]::after {
+    content: attr(data-tooltip); /* Берет текст из атрибута data-tooltip */
+    position: absolute;
+    bottom: 125%;                /* Показывается НАД элементом */
+    left: 50%;
+    transform: translateX(-50%); /* Центрирование по горизонтали */
+
+    /* Форматирование и внешний вид */
+    background-color: #ffffff;   /* Темно-синий/серый фон */
+    color: #1e293b;            /* Белый цвет текста */
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.4;
+    padding: 8px 12px;           /* Отступы внутри подсказки */
+    border-radius: 6px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+
+    /* Управление переносом текста и шириной */
+    white-space: pre-line;       /* Поддерживает переносы строк в тексте */
+    width: max-content;
+    max-width: 250px;            /* Максимальная ширина, после которой текст переносится */
+    text-align: left;
+
+    /* Скрываем по умолчанию */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;        /* Чтобы подсказка не мешала кликам */
+    z-index: 10000;              /* Поверх всех остальных элементов */
+}
+
+/* 3. Показываем подсказку при наведении мышкой */
+[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%); /* Легкий эффект всплытия вверх */
+    transition-delay: 1s;
+}
+
+.input-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.input-wrapper {
+    position: relative;
+    display: inline-block;
 }
