@@ -8,17 +8,17 @@ from random import uniform
 from time import sleep
 import requests
 
-def try_lock(marker_path):
-    """Атомарно пытается создать файл-маркер.
-    Возвращает True только для Первого контейнера, успевшего его создать.
-    """
-    try:
-        # O_CREAT (создать) + O_EXCL (упасть с ошибкой, если файл УЖЕ существует)
-        fd = os.open(marker_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.close(fd)
-        return True
-    except FileExistsError:
-        return False
+# def try_lock(marker_path):
+#     """Атомарно пытается создать файл-маркер.
+#     Возвращает True только для Первого контейнера, успевшего его создать.
+#     """
+#     try:
+#         # O_CREAT (создать) + O_EXCL (упасть с ошибкой, если файл УЖЕ существует)
+#         fd = os.open(marker_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+#         os.close(fd)
+#         return True
+#     except FileExistsError:
+#         return False
 
 # def get_base_dir():
 #     """Определяем папку, где лежит exe или скрипт"""
@@ -26,17 +26,17 @@ def try_lock(marker_path):
 #         return os.path.dirname(sys.executable)
 #     return os.path.dirname(os.path.abspath(__file__))
 
-def get_base_dir():
-    """Определяем реальную папку, где лежит бинарник Nuitka или .py скрипт"""
-    # 1. Проверяем флаг Nuitka
-    if "__compiled__" in globals() or hasattr(sys, "nuitka_binary"):
-        return os.path.dirname(os.path.realpath(sys.argv[0]))
-    # 2. Проверяем PyInstaller (на всякий случай)
-    if getattr(sys, "frozen", False):
-        return os.path.dirname(os.path.realpath(sys.executable))
-
-    # 3. Обычный запуск python3 script.py
-    return os.path.dirname(os.path.abspath(__file__))
+# def get_base_dir():
+#     """Определяем реальную папку, где лежит бинарник Nuitka или .py скрипт"""
+#     # 1. Проверяем флаг Nuitka
+#     if "__compiled__" in globals() or hasattr(sys, "nuitka_binary"):
+#         return os.path.dirname(os.path.realpath(sys.argv[0]))
+#     # 2. Проверяем PyInstaller (на всякий случай)
+#     if getattr(sys, "frozen", False):
+#         return os.path.dirname(os.path.realpath(sys.executable))
+#
+#     # 3. Обычный запуск python3 script.py
+#     return os.path.dirname(os.path.abspath(__file__))
 
 
 BASE_DIR = "/hdd_disk"
@@ -106,14 +106,15 @@ def get_device_platform(device_name, netbox_token, save_file):
         device = data['results'][0]
         platform = device.get('platform')
         if not platform:
+            # print("no platform")
             return None
 
-        ignored_platforms = (
-            'AlteonOS', 'Citrix MPX', 'D-Link', 'Cisco UCS',
-            'Cisco WLC', 'Cisco Small Business Software', 'Juniper Junos E-Series'
-        )
-        if platform.get('name') in ignored_platforms:
-            return None
+        # ignored_platforms = (
+        #     'AlteonOS', 'Citrix MPX', 'D-Link', 'Cisco UCS',
+        #     'Cisco WLC', 'Cisco Small Business Software', 'Juniper Junos E-Series'
+        # )
+        # if platform.get('name') in ignored_platforms:
+        #     return None
 
         return platform.get('name')
     except Exception as e:
@@ -157,16 +158,16 @@ def cleanup_old_folders(base_dir, current_folder_name, save_file):
 def main():
     print("!!! ЗАПУСК ПРОЦЕССОВ LOAD!!!")
     print("Рандомная пауза для упреждения гонки данных.")
-    sleep(round(uniform(6.0, 66.0), 1))
-    success, STOP = False, False
+    # sleep(round(uniform(6.0, 66.0), 1))
+    success, STOP, PROCESS = False, False, False
 
     try:
         log(f"📋 Запуск сессии: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n" + "=" * 10)
 
         if not os.path.exists("/usr/bin/git"):
             log("Не найден установленный git в /usr/bin.")
-            STOP = True
-            return STOP
+            PROCESS = True
+            return PROCESS
 
 
 
@@ -189,8 +190,6 @@ def main():
         READY_MARKER = os.path.join(BASE_DIR, START_DIR, current_today_folder_name, ".ready")
         print("READY_MARKER is:", READY_MARKER)
 
-
-
         log(f"Старт процесса сборки в целевую папку: {current_today_folder_name}")
 
         # 2. Очищаем временную папку скачивания репозиториев git
@@ -200,15 +199,11 @@ def main():
         # if os.path.exists(TODAY_CONFIG_DIR):
         #     make_writable(TODAY_CONFIG_DIR)
         #     shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
-
-
-
-
         if os.path.exists(TODAY_CONFIG_DIR) and os.path.exists(READY_MARKER):
             log("✅ Данные собраны другим контейнером.")
             print("Данные собраны другим контейнером")
-            STOP = True
-            return STOP
+            PROCESS = True
+            return PROCESS
         else:
             open(READY_MARKER, 'a').close()
 
@@ -227,7 +222,8 @@ def main():
         gitlab_token, netbox_token = load_creds(log)
         SYMLINK_PATH = os.path.join(BASE_DIR,START_DIR, "config_files_clear")
         SYMLINK_PATH_RAM = os.path.join(BASE_DIR_RAM,START_DIR, "config_files_clear")
-        box = ("dc", "lan")
+        # box = ("dc", "lan")
+        box = ["dc"]
         box_d={"dc":"ЦОД","lan":"ЛВС"}
 
         for check in box:
@@ -242,6 +238,7 @@ def main():
 
                 repo_url = f"https://oauth2:{gitlab_token}@configs.net.rt.ru/{check}/configs.git"
 
+
                 result = subprocess.run(
                     ["git", "clone", "--depth=1", repo_url, clone_dir],
                     text=True,
@@ -250,13 +247,35 @@ def main():
 
                 if result.returncode != 0:
                     log(f"Ошибка при клонировании [{target_type}]:\n{result.stderr.strip()}")
-                    return
+                    now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
+                    open(os.path.join(BASE_DIR, f"ERROR-{now_str}-gitlab_load"), 'a').close()
+                    if os.path.exists(TODAY_CONFIG_DIR):
+                        make_writable(TODAY_CONFIG_DIR)
+                        sleep(1)
+                        shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
+                        sleep(1)
+                    if os.path.exists(rem_dir):
+                        make_writable(rem_dir)
+                        sleep(1)
+                        shutil.rmtree(rem_dir, ignore_errors=True)
+                        sleep(1)
+
+                    PROCESS = True
+                    return PROCESS
 
                 log(f"Обработка и фильтрация файлов [{target_type}]...")
 
+                data_platforms = (
+                    'AlteonOS', 'Citrix MPX', 'D-Link', 'Cisco UCS',
+                    'Cisco WLC', 'Cisco Small Business Software', 'Juniper Junos E-Series'
+                )
+                ALTER_DIR = os.path.join(BASE_DIR,"alter_confs_"+date_str)
+                if not os.path.exists(ALTER_DIR):
+                    os.makedirs(ALTER_DIR, exist_ok=True)
+
                 for root, dirs, files in os.walk(clone_dir):
                     for file in files:
-                        if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UR", "DV")):
+                        if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UK", "DV")):
                             src_path = os.path.join(root, file)
                             device_name = os.path.splitext(file)[0]
 
@@ -264,16 +283,25 @@ def main():
                             if not platform or not platform.strip():
                                 continue
 
-                            platform = platform.replace("/", os.sep)
-                            platform = re.sub(r'[<>:"/\\|?*]', '_', platform)
-                            platform_dir = os.path.join(clear_dir, platform)
-                            os.makedirs(platform_dir, exist_ok=True)
+                            if platform in data_platforms:
+                                platform_dir = os.path.join(ALTER_DIR,target_type, platform)
+                                os.makedirs(platform_dir, exist_ok=True)
+                                dst_path = os.path.join(platform_dir, file)
+                                shutil.copy2(src_path, dst_path)
+                            else:
+                                platform = platform.replace("/", os.sep)
+                                platform = re.sub(r'[<>:"/\\|?*]', '_', platform)
+                                platform_dir = os.path.join(clear_dir, platform)
+                                os.makedirs(platform_dir, exist_ok=True)
 
-                            dst_path = os.path.join(platform_dir, file)
-                            shutil.copy2(src_path, dst_path)
+                                dst_path = os.path.join(platform_dir, file)
+                                shutil.copy2(src_path, dst_path)
                             # print(platform, dst_path)
 
                 log(f"Обработка [{target_type}] завершена.")
+                sleep(2)
+
+
 
         # 3. Временную папку для git сырцов чистим
         if os.path.exists(rem_dir):
@@ -282,12 +310,51 @@ def main():
             shutil.rmtree(rem_dir, ignore_errors=True)
             sleep(1)
 
+
+        # если папок нет или они пустые
+        if not os.path.isdir(TODAY_CONFIG_DIR+"/ЦОД") or not os.listdir(TODAY_CONFIG_DIR+"/ЦОД"):
+            # print(TODAY_CONFIG_DIR+"/ЦОД")
+            now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
+            print("Папки ЦОД не существует или она пустая")
+            log("Папки ЦОД не существует или она пустая")
+            open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_COD"), 'a').close()
+            STOP = True
+            return STOP
+        else:
+            print("проверка ЦОД: ", TODAY_CONFIG_DIR + "/ЦОД")
+            print("папка ЦОД есть и не пустая")
+
+        # if not os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") or not os.listdir(TODAY_CONFIG_DIR+"/ЛВС"):
+        #     # print(TODAY_CONFIG_DIR+"/ЛВС")
+        #     now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
+        #     print("Папки ЛВС не существует или она пустая")
+        #     log("Папки ЛВС не существует или она пустая")
+        #     open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_LVS"), 'a').close()
+        #     STOP = True
+        #     return STOP
+        # else:
+        #     print("проверка ЦОД: ", TODAY_CONFIG_DIR + "/ЛВС")
+        #     print("папка ЛВС есть и не пустая")
+
+        # if not os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") and not os.listdir(TODAY_CONFIG_DIR+"/ЦОД"):
+        #     now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
+        #     open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder LVS"), 'a').close()
+        #     print("Папки ЛВС не существует или она пустая")
+        #     log("Папки ЛВС не существует или она пустая")
+        #     STOP = True
+        #     return STOP
+
+
+
+
         # 4. ФИНАЛЬНЫЙ ЭТАП: Переключаем симлинк на новую готовую папку
 
         success = True
         print("success is", success)
     except Exception as e:
         success = False
+        print("success is", success)
+        print(e)
         log(f"❌ Перехвачено исключение: {e}")
     finally:
         if success:
@@ -321,6 +388,12 @@ def main():
             cleanup_old_folders(BASE_DIR, current_today_folder_name, log)
             sleep(1)
 
+            if os.path.exists(rem_dir):
+                    make_writable(rem_dir)
+                    sleep(1)
+                    shutil.rmtree(rem_dir, ignore_errors=True)
+                    sleep(1)
+
             # TODAY_CONFIG_DIR = os.path.join(BASE_DIR, START_DIR, current_today_folder_name)
             # if os.path.exists(READY_MARKER):
             #     os.remove(READY_MARKER)
@@ -328,10 +401,33 @@ def main():
             log("\nВсе операции успешно завершены!")
 
         else:
-            if STOP: log("\nНормально вышли из программы!"); return
-            log("\nПроизошла ошибка!")
+            if PROCESS: log("\n Нормально выходим из программы!"); return
+            if STOP:
+                log("\nВышли из программы по STOP!");
+                if os.path.isdir(TODAY_CONFIG_DIR+"/ЦОД") and not os.listdir(TODAY_CONFIG_DIR + "/ЦОД"):
+                    log("\nОчищаем нескачанную папку ЦОД!");
+                    shutil.rmtree(TODAY_CONFIG_DIR + "/ЦОД", ignore_errors=True)
+                    sleep(1)
+                if os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") and not os.listdir(TODAY_CONFIG_DIR + "/ЛВС"):
+                    log("\nОчищаем нескачанную папку ЛВС!");
+                    shutil.rmtree(TODAY_CONFIG_DIR + "/ЛВС", ignore_errors=True)
+                    sleep(1)
+                if os.path.isdir(TODAY_CONFIG_DIR) and len(os.listdir(TODAY_CONFIG_DIR)) < 2:
+                    log("\nОчищаем нескачанную папку", TODAY_CONFIG_DIR);
+                    print("в папке только ready")
+                    shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
+                    sleep(1)
+                if os.path.exists(rem_dir):
+                    log("\n Попытка обработки неуспешна. Удаляем config_files.");
+                    make_writable(rem_dir)
+                    sleep(1)
+                    shutil.rmtree(rem_dir, ignore_errors=True)
+                    sleep(1)
+                return
+
+            log("\nПроизошла неизвестная ошибка!")
             now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
-            open(os.path.join(BASE_DIR, f"ERROR-{now_str}"), 'a').close()
+            open(os.path.join(BASE_DIR, f"ERROR-{now_str}-another_error"), 'a').close()
             if os.path.exists(TODAY_CONFIG_DIR):
                 make_writable(TODAY_CONFIG_DIR)
                 sleep(1)
