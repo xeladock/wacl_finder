@@ -158,7 +158,7 @@ def cleanup_old_folders(base_dir, current_folder_name, save_file):
 def main():
     print("!!! ЗАПУСК ПРОЦЕССОВ LOAD!!!")
     print("Рандомная пауза для упреждения гонки данных.")
-    # sleep(round(uniform(6.0, 66.0), 1))
+    sleep(round(uniform(6.0, 66.0), 1))
     success, STOP, PROCESS = False, False, False
 
     try:
@@ -199,6 +199,7 @@ def main():
         # if os.path.exists(TODAY_CONFIG_DIR):
         #     make_writable(TODAY_CONFIG_DIR)
         #     shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
+
         if os.path.exists(TODAY_CONFIG_DIR) and os.path.exists(READY_MARKER):
             log("✅ Данные собраны другим контейнером.")
             print("Данные собраны другим контейнером")
@@ -212,7 +213,9 @@ def main():
         if not os.path.exists(FULL_PATH_RAM):
             os.makedirs(FULL_PATH_RAM, exist_ok=True)
         print("FULL_PATH_RAM is", FULL_PATH_RAM)
+
         rem_dir = os.path.join(BASE_DIR, "config_files")
+
         if os.path.exists(rem_dir):
             make_writable(rem_dir)
             sleep(1)
@@ -222,8 +225,8 @@ def main():
         gitlab_token, netbox_token = load_creds(log)
         SYMLINK_PATH = os.path.join(BASE_DIR,START_DIR, "config_files_clear")
         SYMLINK_PATH_RAM = os.path.join(BASE_DIR_RAM,START_DIR, "config_files_clear")
-        # box = ("dc", "lan")
-        box = ["dc"]
+        box = ("dc", "lan")
+        # box = ["dc"]
         box_d={"dc":"ЦОД","lan":"ЛВС"}
 
         for check in box:
@@ -276,6 +279,7 @@ def main():
                 for root, dirs, files in os.walk(clone_dir):
                     for file in files:
                         if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UK", "DV")):
+                        # if file.startswith(("CE","DV")):
                             src_path = os.path.join(root, file)
                             device_name = os.path.splitext(file)[0]
 
@@ -324,17 +328,19 @@ def main():
             print("проверка ЦОД: ", TODAY_CONFIG_DIR + "/ЦОД")
             print("папка ЦОД есть и не пустая")
 
-        # if not os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") or not os.listdir(TODAY_CONFIG_DIR+"/ЛВС"):
-        #     # print(TODAY_CONFIG_DIR+"/ЛВС")
-        #     now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
-        #     print("Папки ЛВС не существует или она пустая")
-        #     log("Папки ЛВС не существует или она пустая")
-        #     open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_LVS"), 'a').close()
-        #     STOP = True
-        #     return STOP
-        # else:
-        #     print("проверка ЦОД: ", TODAY_CONFIG_DIR + "/ЛВС")
-        #     print("папка ЛВС есть и не пустая")
+
+        if not os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") or not os.listdir(TODAY_CONFIG_DIR+"/ЛВС"):
+            # print(TODAY_CONFIG_DIR+"/ЛВС")
+            now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
+            print("Папки ЛВС не существует или она пустая")
+            log("Папки ЛВС не существует или она пустая")
+            open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_LVS"), 'a').close()
+            STOP = True
+            return STOP
+        else:
+            print("проверка ЛВС: ", TODAY_CONFIG_DIR + "/ЛВС")
+            print("папка ЛВС есть и не пустая")
+
 
         # if not os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") and not os.listdir(TODAY_CONFIG_DIR+"/ЦОД"):
         #     now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
@@ -369,7 +375,7 @@ def main():
                 shutil.copytree(TODAY_CONFIG_DIR, TODAY_CONFIG_DIR_RAM, dirs_exist_ok=True)
                 sleep(1)
             except:
-                log("\nКопирование в RAM не успешно...")
+                log("\nКопирование в RAM неуспешно...")
                 return
 
             log("\nПереключаем символическую ссылку в RAM...")
@@ -393,12 +399,23 @@ def main():
                     sleep(1)
                     shutil.rmtree(rem_dir, ignore_errors=True)
                     sleep(1)
+            from wbc import main as wbcmain
+            try:
+                wbcmain()
+                sleep(1)
+                log("\nСоздание архива WBC завершено успешно...")
+                print("\nСоздание архива WBC завершено успешно...")
+            except:
+                log("\nСоздание архива WBC завершено неуспешно...")
+                print("\nСоздание архива WBC завершено неуспешно...")
+
 
             # TODAY_CONFIG_DIR = os.path.join(BASE_DIR, START_DIR, current_today_folder_name)
             # if os.path.exists(READY_MARKER):
             #     os.remove(READY_MARKER)
-
+            sleep(1)
             log("\nВсе операции успешно завершены!")
+            print("\nВсе операции успешно завершены!")
 
         else:
             if PROCESS: log("\n Нормально выходим из программы!"); return
