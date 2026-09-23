@@ -359,8 +359,8 @@ def main():
         print("success is", success)
     except Exception as e:
         success = False
-        print("success is", success)
-        print(e)
+        # print("success is", success)
+        print("success is", success, e)
         log(f"❌ Перехвачено исключение: {e}")
     finally:
         if success:
@@ -430,12 +430,12 @@ def main():
                     shutil.rmtree(TODAY_CONFIG_DIR + "/ЛВС", ignore_errors=True)
                     sleep(1)
                 if os.path.isdir(TODAY_CONFIG_DIR) and len(os.listdir(TODAY_CONFIG_DIR)) < 2:
-                    log("\nОчищаем нескачанную папку", TODAY_CONFIG_DIR);
-                    print("в папке только ready")
+                    log("\nОчищаем нескачанную папку " + TODAY_CONFIG_DIR);
+                    print("В папке только ready")
                     shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
                     sleep(1)
                 if os.path.exists(rem_dir):
-                    log("\n Попытка обработки неуспешна. Удаляем config_files.");
+                    log("\n Попытка обработки неуспешна. Удаляем папку config_files");
                     make_writable(rem_dir)
                     sleep(1)
                     shutil.rmtree(rem_dir, ignore_errors=True)

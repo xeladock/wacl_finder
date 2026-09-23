@@ -39,20 +39,20 @@ def lg(message):
 #     "KZ": "Казахстан",
 #     # Добавляйте новые префиксы по аналогии
 # }
-MONTHS = {
-    1: "Январь",
-    2: "Февраль",
-    3: "Март",
-    4: "Апрель",
-    5: "Май",
-    6: "Июнь",
-    7: "Июль",
-    8: "Август",
-    9: "Сентябрь",
-    10: "Октябрь",
-    11: "Ноябрь",
-    12: "Декабрь",
-}
+# MONTHS = {
+#     1: "Январь",
+#     2: "Февраль",
+#     3: "Март",
+#     4: "Апрель",
+#     5: "Май",
+#     6: "Июнь",
+#     7: "Июль",
+#     8: "Август",
+#     9: "Сентябрь",
+#     10: "Октябрь",
+#     11: "Ноябрь",
+#     12: "Декабрь",
+# }
 
 COUNTRY_MAP = {
     "CEMS":"Корпоративный Центр",
@@ -80,10 +80,12 @@ def parse_date_from_foldername(folder_name: str):
     match_alter = re.search(r"alter_confs_(\d{2})_(\d{2})_(\d{4})", folder_name)
     if match:
         day, month, year = match.groups()
+        # print(day, month, year)
         return year, month, day
     elif match_alter:
         day, month, year = match_alter.groups()
-        print(match_alter.groups())
+        # print(day, month, year)
+        # print(match_alter.groups())
         return year, month, day
     return False
 
@@ -112,11 +114,11 @@ def process_incoming_folder(source_folder: Path, today_str: str):
     # 1. Проверяем шаблон имени
     date_info = parse_date_from_foldername(source_folder.name)
     if not date_info:
-        # print(f"[SKIP] {source_folder.name}: не соответствует шаблону имени.")
+        lg(f"[SKIP] {source_folder.name}: не соответствует шаблону имени.")
         return
 
-    year, month_str, day = date_info
-    folder_date_str = f"{day}_{month_str}_{year}"
+    year, month, day = date_info
+    folder_date_str = f"{day}_{month}_{year}"
 
     # 2. УСЛОВИЕ: Сравниваем дату папки с сегодняшней датой
     if folder_date_str != today_str:
@@ -125,11 +127,12 @@ def process_incoming_folder(source_folder: Path, today_str: str):
         # pass  # Дата не равна текущей — ничего не делаем
         return
     else:
-        global remove_folder
-        remove_folder = source_folder.name if source_folder.name.startswith("alter_") else None
+        if source_folder.name.startswith("alter_"):
+            global remove_folder
+            remove_folder = source_folder.name
 
-    month_int = int(month_str)
-    month_name = MONTHS.get(month_int, month_str)
+    # month_int = int(month)
+    # month_name = MONTHS.get(month_int, month_str)
 
     # print(f"\n=== Обработка актуальной папки за сегодня: {source_folder.name} ===")
 
@@ -142,7 +145,7 @@ def process_incoming_folder(source_folder: Path, today_str: str):
             file_path = Path(root) / file
             # print(file_path)
             rel_path = file_path.relative_to(source_folder)
-            print(rel_path)
+            # print(rel_path)
             parts = rel_path.parts
 
             if len(parts) <= 2:
@@ -157,7 +160,7 @@ def process_incoming_folder(source_folder: Path, today_str: str):
 
             # Формируем целевой путь: /archive/YYYY/MM/DD/{Сегмент}/{Страна}/{Вендор}/
                 target_dir = (
-                        ARCHIVE_BASE_DIR / year / month_name / day / segment / country / vendor
+                        ARCHIVE_BASE_DIR / year / month / day / segment / country / vendor
                 )
                 target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -165,7 +168,7 @@ def process_incoming_folder(source_folder: Path, today_str: str):
 
                 try:
                     shutil.copy2(str(file_path), str(target_file_path))
-                    # time.sleep(0.02)
+                    # time.sleep(0.06)
                     # print(f"[OK] {file} -> {target_file_path.relative_to(ARCHIVE_BASE_DIR)}")
                 except Exception as e:
                     lg(f"[WBC ERROR] Ошибка при обработке файла {file}: {e}")
@@ -200,10 +203,14 @@ def main():
     for item in ALTER_DIR.iterdir():
         if item.is_dir() and item.name.startswith("alter_confs_"):
             process_incoming_folder(item, today_str)
-    print("remove_folder is ",remove_folder)
+    # print("remove_folder is ",remove_folder)
     try:
-            # shutil.rmtree(os.path.join(ALTER_DIR,remove_folder))
-            # time.sleep(1)
+            # print(os.path.join(ALTER_DIR,remove_folder))
+        # print("remove_folder is ", remove_folder)
+        if remove_folder and remove_folder.startswith("alter_"):
+            # print("remove_folder is ", remove_folder)
+            shutil.rmtree(os.path.join(ALTER_DIR,remove_folder))
+            time.sleep(1)
             lg(f"[WBC CLEANUP] Исходная папка alter удалена.")
             print(f"[WBC CLEANUP] Исходная папка alter удалена.")
     except Exception as e:
