@@ -168,7 +168,7 @@ def process_incoming_folder(source_folder: Path, today_str: str):
 
                 try:
                     shutil.copy2(str(file_path), str(target_file_path))
-                    # time.sleep(0.06)
+                    time.sleep(0.06)
                     # print(f"[OK] {file} -> {target_file_path.relative_to(ARCHIVE_BASE_DIR)}")
                 except Exception as e:
                     lg(f"[WBC ERROR] Ошибка при обработке файла {file}: {e}")
