@@ -191,7 +191,7 @@ async def search(request: SearchRequest):
 
                     # 2. Обратный поиск: any -> Source IP
                     gen2 = parse_acl_main("any", tmp_ip, request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode, request.strict_mode, ignore_src_any=request.ignore_src_any,
+                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
                                         ignore_dst_any=request.ignore_dst_any,
                                         src_mask_limit=request.src_mask_limit,
                                         dst_mask_limit=request.dst_mask_limit)
@@ -549,4 +549,4 @@ import uvicorn
 
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)
+    uvicorn.run(app, host="0.0.0.0", port=8001, workers=1,access_log=False)

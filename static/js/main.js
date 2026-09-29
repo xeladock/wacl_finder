@@ -703,12 +703,12 @@ function isValidIPorNetwork(str) {
 
         for (let num of ip) {
             const n = parseInt(num);
-            if (n <= 0 || n > 255) return false;
+            if (n < 0 || n > 255) return false;
         }
 
         if (parts.length === 2) {
             const mask = parseInt(parts[1]);
-            if (mask <= 0 || mask > 32) return false;
+            if (mask < 0 || mask > 32) return false;
         }
 
     return true;

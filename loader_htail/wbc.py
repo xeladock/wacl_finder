@@ -7,7 +7,7 @@ from pathlib import Path
 # --- КОНФИГУРАЦИЯ ---
 
 # Коренной каталог, куда складывается архив
-ARCHIVE_BASE_DIR = Path("/archive/wbc")
+ARCHIVE_BASE_DIR = Path("/archive")
 
 # Корневая папка с входящими днями (где скрипт ищет папки вида config_files_clear_*)
 INCOMING_BASE_DIR = Path("/hdd_disk/data/")  # Укажите реальный путь к вашей папке
