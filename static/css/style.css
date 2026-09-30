@@ -661,61 +661,75 @@ position: absolute;
 
 /*подсказки*/
 
-[data-tooltip] {
-    position: relative; /* Обязательно для позиционирования */
+.input-wrapper {
+    position: relative;
+    display: inline-block;
 }
 
 /* 2. Само всплывающее окно (стили, фон, отступы) */
-[data-tooltip] {
-    position: relative; /* Обязательно для позиционирования */
-}
-
-/* 2. Само всплывающее окно (стили, фон, отступы) */
-[data-tooltip]::after {
-    content: attr(data-tooltip); /* Берет текст из атрибута data-tooltip */
+.tooltip-box {
     position: absolute;
     bottom: 125%;                /* Показывается НАД элементом */
     left: 50%;
     transform: translateX(-50%); /* Центрирование по горизонтали */
 
     /* Форматирование и внешний вид */
-    background-color: #ffffff;   /* Темно-синий/серый фон */
-    color: #1e293b;            /* Белый цвет текста */
+    background-color: #ffffff;
+    color: #1e293b;
     font-size: 0.85rem;
     font-weight: 500;
     line-height: 1.4;
-    padding: 8px 12px;           /* Отступы внутри подсказки */
+    padding: 4px 6px;           /* Отступы внутри подсказки */
     border-radius: 6px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
 
+
     /* Управление переносом текста и шириной */
-    white-space: pre-line;       /* Поддерживает переносы строк в тексте */
+
     width: max-content;
-    max-width: 250px;            /* Максимальная ширина, после которой текст переносится */
+    max-width: 250px;            /* Максимальная ширина */
     text-align: left;
+    white-space: nowrap;
+    width: max-content;
+    max-width: none;
 
     /* Скрываем по умолчанию */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
-    pointer-events: none;        /* Чтобы подсказка не мешала кликам */
-    z-index: 10000;              /* Поверх всех остальных элементов */
+
+    /* КРИТИЧНО ДЛЯ ССЫЛОК: */
+    pointer-events: auto;        /* Включаем клики и взаимодействие */
+    z-index: 10000;              /* Поверх всех элементов */
 }
 
-/* 3. Показываем подсказку при наведении мышкой */
-[data-tooltip]:hover::after {
+/* 3. Невидимый "мостик" под тултипом, чтобы мышка не "выпадала" при переходе на ссылку */
+.tooltip-box::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 15px;                /* Заполняет зазор между полем и подсказкой */
+}
+
+/* 4. Показываем подсказку при наведении на контейнер ИЛИ на сам tooltip */
+.input-wrapper:hover .tooltip-box,
+.tooltip-box:hover {
     opacity: 1;
     visibility: visible;
-    transform: translateX(-50%); /* Легкий эффект всплытия вверх */
-    transition-delay: 1s;
+    transform: translateX(-50%);
+    transition-delay: 1s;      /* Уменьшили задержку, чтобы с подсказкой было удобно работать */
 }
 
-.input-wrapper {
-    position: relative;
-    display: inline-block;
+/* 5. Стилизация ссылки внутри тултипа */
+.tooltip-box a {
+    color: #2563eb;
+    text-decoration: underline;
+    font-weight: 600;
+
 }
 
-.input-wrapper {
-    position: relative;
-    display: inline-block;
+.tooltip-box a:hover {
+    color: #1d4ed8;
 }

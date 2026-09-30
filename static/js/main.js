@@ -54,12 +54,25 @@ function openOgViewer() {
         function resetIPs() {
             const src = document.getElementById('source_ip');
             const dst = document.getElementById('dest_ip');
+            const not_any_src = document.getElementById('src_not_any');
+            const not_any_dst = document.getElementById('dst_not_any');
+            const src_mask_limit = document.getElementById('src_mask_limit');
+            const dst_mask_limit = document.getElementById('dst_mask_limit');
+
 
             src.value = '';
             dst.value = '';
 
             src.placeholder = 'any';
             dst.placeholder = 'any';
+
+            not_any_src.checked = false;
+            not_any_dst.checked = false;
+
+            src_mask_limit.value = "";
+            dst_mask_limit.value = "";
+
+
         }
 
         function reverseIPs() {
@@ -68,8 +81,19 @@ function openOgViewer() {
             const temp = source.value;
             source.value = dest.value;
             dest.value = temp;
-        }
 
+            const not_any_src = document.getElementById('src_not_any');
+            const not_any_dst = document.getElementById('dst_not_any');
+            const tempAny = not_any_src.checked;
+            not_any_src.checked = not_any_dst.checked;
+            not_any_dst.checked = tempAny;
+
+            const src_mask_limit = document.getElementById('src_mask_limit');
+            const dst_mask_limit = document.getElementById('dst_mask_limit');
+            const tempMask = src_mask_limit.value;
+            src_mask_limit.value = dst_mask_limit.value;
+            dst_mask_limit.value = tempMask;
+        }
 
 
 document.addEventListener('keydown', function(e) {
@@ -757,7 +781,9 @@ function DownloadResultTXT() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
-   
+
+
+//   экспорт xlsx
 async function downloadXLSX() {
     const pre = document.querySelector('pre');
     if (!pre || !pre.textContent.trim()) {
@@ -766,6 +792,12 @@ async function downloadXLSX() {
     }
 
     const lines = pre.textContent.trim().split('\n').filter(l => l.trim() !== '');
+
+        if (lines.length > 1000) {
+        alert("❌ Файл выгрузки слишком велик.\nCократите количество строк.");
+        return;
+    }
+
     const payload = lines.map(line => ({ acl_line: line.trim() }));
 
     try {
@@ -803,6 +835,13 @@ async function downloadCSV() {
     }
 
     const lines = pre.textContent.trim().split('\n').filter(l => l.trim() !== '');
+
+    if (lines.length > 1000) {
+        alert("❌ Файл выгрузки слишком велик.\nCократите количество строк.");
+        return;
+    }
+
+
     const payload = lines.map(line => ({ acl_line: line.trim() }));
 
     try {
@@ -830,6 +869,7 @@ async function downloadCSV() {
         alert("❌ Не удалось экспортировать в CSV");
     }
 }
+
 
 //подсказки
 

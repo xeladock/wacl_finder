@@ -266,7 +266,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
             # yield f"УЭС{k[0], k[1]}: {v}"
             yield f"🎯 УЭС{k[0]} {k[1]}: \n{joined_values}\n----"
             # yield f"{v}"
-        print(res_device)
+        # print(res_device)
         # yield f"----{res_device}----"
 
 

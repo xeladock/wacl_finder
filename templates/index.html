@@ -6,6 +6,10 @@
     <title>    ACL Parser</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/og_viewer.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+<!--    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />-->
+<!--    <script src="https://unpkg.com/popper.js@2"></script>-->
+<!--    <script src="https://unpkg.com/tippy.js@6"></script>-->
 
 </head>
 <body>
@@ -38,7 +42,8 @@
                        maxlength="50"
 
                 >
-                <div class="input-wrapper" data-tooltip="лимит маски src">
+
+                <div class="input-wrapper">
                     <select id="src_mask_limit" class="mask-select">
                     <option value="">lim</option>
                     <option value="32">/32</option>
@@ -60,10 +65,22 @@
                     <option value="16">/16</option>
                     <option value="8">/8</option>
                 </select>
+                                    <div class="tooltip-box">
+        лимит маски src. (<a href="/help#block-1" target="_blank">?</a>)
+    </div>
+
+
                 </div>
-                <label class="not-any-label" data-tooltip="Игнорировать значение src any">
-                <input type="checkbox" id="src_not_any"> !ANY
+            <div class="input-wrapper">
+                <label class="not-any-label">
+                    <input type="checkbox" id="src_not_any"> !ANY
                 </label>
+
+                <div class="tooltip-box">
+                    Игнорировать значение src any. (<a href="/help#block-1" target="_blank">?</a>)
+                </div>
+            </div>
+
             </div>
 
 <!-- Destination IP -->
@@ -76,7 +93,7 @@
                        onfocus="this.placeholder=''"
                        onblur="if(this.value==='') this.placeholder='any'"
                        maxlength="50">
-                                <div class="input-wrapper" data-tooltip="лимит маски dst">
+                                <div class="input-wrapper">
                     <select id="dst_mask_limit" class="mask-select">
                     <option value="">lim</option>
                     <option value="32">/32</option>
@@ -98,10 +115,19 @@
                     <option value="16">/16</option>
                     <option value="8">/8</option>
                 </select>
+                <div class="tooltip-box">
+        лимит маски dst. (<a href="/help#block-1" target="_blank">?</a>)
+    </div>
                                     </div>
-                <label class="not-any-label" data-tooltip="Игнорировать значение dst any">
+        <div class="input-wrapper">
+            <label class="not-any-label">
                 <input type="checkbox" id="dst_not_any"> !ANY
-                </label>
+            </label>
+
+            <div class="tooltip-box">
+                Игнорировать значение dst any. (<a href="/help#block-1" target="_blank">?</a>)
+            </div>
+</div>
             </div>
 
 <!-- Чекбоксы + Кнопки в одну строку -->
