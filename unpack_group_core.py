@@ -1,7 +1,7 @@
 import ipaddress
 import os
 
-from unpack_group_parser import CiscoASAParser, CiscoIOSXEParser, CiscoFirepowerParser3, CiscoNexusParser, CiscoPIXParser, HuaweiVRPParser, FortigateParser
+from unpack_group_parser import CiscoASAParserSVC, CiscoIOSXEParserSVC, CiscoFirepowerParserSVC, CiscoNexusParserSVC, CiscoPIXParserSVC, HuaweiVRPParserSVC, FortigateParserSVC
 
 # BASE_DIR = "data/config_files_clear"
 
@@ -19,11 +19,8 @@ def find_device_config(device):
     # if device == "":
     #     return "пусто"
     for root, dirs, files in os.walk(BASE_DIR):
-
         for f in files:
-
             if f == device:
-
                 return os.path.join(root, f)
 
 
@@ -69,19 +66,19 @@ def get_object_group(device, group):
         config = f.read()
 
     if vendor == "cisco_asa":
-        parser = CiscoASAParser(config)
+        parser = CiscoASAParserSVC(config)
     elif vendor == "cisco_ios_xe":
-        parser = CiscoIOSXEParser(config)
+        parser = CiscoIOSXEParserSVC(config)
     elif vendor == "cisco_fxos":
-        parser = CiscoFirepowerParser3(config)
+        parser = CiscoFirepowerParserSVC(config)
     elif vendor == "cisco_nxos":
-        parser = CiscoNexusParser(config)
+        parser = CiscoNexusParserSVC(config)
     elif vendor == "fortigate":
-        parser = FortigateParser(config)
-    elif vendor == "cisco_pix":
-        parser = CiscoPIXParser(config)
+        parser = FortigateParserSVC(config)
     elif vendor == "huawei_vrp":
-        parser = HuaweiVRPParser(config)
+        parser = HuaweiVRPParserSVC(config)
+    elif vendor == "cisco_pix":
+        parser = CiscoPIXParserSVC(config)
 
 
     else:
