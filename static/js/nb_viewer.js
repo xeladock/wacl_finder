@@ -118,6 +118,24 @@ document.addEventListener('DOMContentLoaded', () => {
         searchBtn.style.backgroundColor = '#2563eb';
         inputField.disabled = false;
     }
+    document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') {
+                e.preventDefault(); // Блокируем встроенный поиск браузера
+                if (!isSearching) {
+                    startSearch(); // Теперь функция прекрасно видна!
+                } else {stopSearch()}
+            }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+            e.preventDefault();
+            downloadResult();
+        }
+    if (e.key === 'F1') {
+            e.preventDefault(); // Блокируем стандартную справку браузера/ОС
+            openHelp();
+            }
+
+        });
 });
 
 function downloadResult() {
@@ -201,21 +219,6 @@ function openHelp() {
         `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,location=no,toolbar=no,menubar=no,scrollbars=no`
     );
 }
-document.addEventListener('keydown', function(e) {
-if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        startSearch();
-    }
 
-if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        downloadResult();
-    }
-if (e.key === 'F1') {
-        e.preventDefault(); // Блокируем стандартную справку браузера/ОС
-        openHelp();
-        }
-
-    });
 
 

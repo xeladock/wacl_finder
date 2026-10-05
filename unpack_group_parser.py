@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 import ipaddress
 import socket
 import re
+from collections import defaultdict
+
 
 class BaseParser(ABC):
     def __init__(self, config_text):
@@ -4197,9 +4199,413 @@ import ipaddress
 import re
 
 
+# class CiscoPIXParserSVC:
+#
+#     # Встроенная таблица соответствия имен сервисов Cisco PIX/ASA
+#     PORT_MAP = {
+#         'www': 80,
+#         'http': 80,
+#         'https': 443,
+#         'domain': 53,
+#         'dns': 53,
+#         'ssh': 22,
+#         'telnet': 23,
+#         'smtp': 25,
+#         'snmp': 161,
+#         'snmptrap': 162,
+#         'ntp': 123,
+#         'syslog': 514,
+#         'kerberos': 88,
+#         'ldap': 389,
+#         'ldaps': 636,
+#         'bgp': 179,
+#         'sip': 5060,
+#         'ftp': 21,
+#         'ftp-data': 20,
+#     }
+#
+#     def __init__(self, config_text):
+#         self.config = config_text.replace("\r\n", "\n")
+#         self.lines = self.config.splitlines()
+#         self.object_networks = self.parse_all_object_networks()
+#         self.all_service_groups = self.parse_all_service_groups()
+#
+#     def _resolve_port(self, val_str):
+#         """Преобразует строку в порт (число или имя из таблицы Cisco)."""
+#         val_clean = str(val_str).strip().lower()
+#         if val_clean.isdigit():
+#             p = int(val_clean)
+#             return p if 1 <= p <= 65535 else None
+#         return self.PORT_MAP.get(val_clean)
+#
+#     def parse_all_object_networks(self):
+#         """Парсим object network (аналогично ASA)"""
+#         objects = {}
+#         i = 0
+#         while i < len(self.lines):
+#             line = self.lines[i].strip()
+#             if line.startswith("object network"):
+#                 parts = line.split()
+#                 if len(parts) >= 3:
+#                     name = parts[2]
+#                     if i + 1 < len(self.lines):
+#                         next_line = self.lines[i + 1].strip()
+#                         if next_line.startswith("range"):
+#                             p = next_line.split()
+#                             start = ipaddress.ip_address(p[1])
+#                             end = ipaddress.ip_address(p[2])
+#                             objects[name] = {
+#                                 "type": "range",
+#                                 "start": start,
+#                                 "end": end,
+#                                 "text": next_line,
+#                             }
+#                             i += 1
+#                         elif next_line.startswith("host"):
+#                             ip = next_line.split()[1]
+#                             objects[name] = {
+#                                 "type": "host",
+#                                 "network": ipaddress.ip_network(ip + "/32"),
+#                                 "text": next_line,
+#                             }
+#                             i += 1
+#                         else:
+#                             objects[name] = {"type": "object", "text": line}
+#                     else:
+#                         objects[name] = {"type": "object", "text": line}
+#             i += 1
+#         return objects
+#
+#     def parse_all_service_groups(self):
+#         """Парсит все object-group service NAME [tcp|udp|ip]"""
+#         groups = {}
+#         i = 0
+#         while i < len(self.lines):
+#             line = self.lines[i].strip()
+#
+#             if line.startswith("object-group service "):
+#                 parts = line.split()
+#                 group_name = parts[2]
+#
+#                 # Если протокол указан прямо в названии группы (object-group service NAME tcp)
+#                 header_proto = parts[3].lower() if len(parts) >= 4 else None
+#
+#                 members = []
+#                 i += 1
+#                 while i < len(self.lines):
+#                     curr = self.lines[i].strip()
+#                     # Конец блока группы
+#                     if (
+#                         not curr
+#                         or not self.lines[i].startswith(" ")
+#                         or curr.startswith("object-group")
+#                     ):
+#                         break
+#
+#                     # Пропускаем комментарии
+#                     if curr.startswith("description "):
+#                         i += 1
+#                         continue
+#
+#                     members.append(curr)
+#                     i += 1
+#
+#                 groups[group_name] = {
+#                     "header_proto": header_proto,
+#                     "members": members,
+#                     "text": line,
+#                 }
+#                 continue
+#
+#             i += 1
+#         return groups
+#
+#     def get_object_group(self, group_name):
+#         """Возвращает содержимое сетевых или сервисных групп"""
+#         # 1. Сначала ищем среди object-group network
+#         group_start = None
+#         for i, line in enumerate(self.lines):
+#             if line.strip() == f"object-group network {group_name}":
+#                 group_start = i
+#                 break
+#
+#         if group_start is not None:
+#             objects = []
+#             for line in self.lines[group_start + 1 :]:
+#                 if not line.startswith(" "):
+#                     break
+#                 line_stripped = line.strip()
+#                 if not line_stripped:
+#                     continue
+#
+#                 parts = line_stripped.split()
+#
+#                 if line_stripped.startswith("network-object") and len(parts) >= 3:
+#                     ip = parts[1]
+#                     mask = parts[2]
+#                     try:
+#                         net = ipaddress.ip_network(f"{ip}/{mask}", strict=False)
+#                         objects.append({
+#                             "text": line_stripped,
+#                             "type": "network",
+#                             "network": net,
+#                         })
+#                     except ValueError:
+#                         pass
+#
+#                 elif line_stripped.startswith("network-object host") and len(parts) >= 3:
+#                     ip = parts[2]
+#                     objects.append({
+#                         "text": line_stripped,
+#                         "type": "host",
+#                         "network": ipaddress.ip_network(ip + "/32"),
+#                     })
+#
+#                 elif len(parts) >= 3 and parts[1] == "object":
+#                     objects.append({
+#                         "text": line_stripped,
+#                         "type": "object_ref",
+#                         "name": parts[2],
+#                     })
+#             return objects
+#
+#         # 2. Поиск по одиночной object network
+#         if group_name in self.object_networks:
+#             obj = self.object_networks[group_name]
+#             d = {"text": obj.get("text", ""), "type": obj["type"]}
+#             if "network" in obj:
+#                 d["network"] = obj["network"]
+#             if "start" in obj and "end" in obj:
+#                 d["start"] = obj["start"]
+#                 d["end"] = obj["end"]
+#             return [d]
+#
+#         # 3. Поиск по object-group service
+#         if group_name in self.all_service_groups:
+#             grp = self.all_service_groups[group_name]
+#             objects = []
+#             for member_text in grp.get("members", []):
+#                 objects.append({
+#                     "text": member_text,
+#                     "type": "service_object_ref",
+#                     "name": member_text,
+#                     "header_proto": grp.get("header_proto"),
+#                 })
+#             return objects
+#
+#         return [
+#             {
+#                 "text": f"object-group {group_name}",
+#                 "type": "service_object_ref",
+#                 "name": group_name,
+#             }
+#         ]
+#
+#     def check_service(self, objects, target_query=None, target_proto=None):
+#         """Подсветка совпадений по сервисам и портам Cisco PIX/ASA"""
+#         if not target_query:
+#             return [(obj.get("text", ""), False) for obj in objects]
+#
+#         # 1. Разбиваем запрос по запятым
+#         raw_elements = [
+#             q.strip() for q in str(target_query).split(",") if q.strip()
+#         ]
+#
+#         exact_only_queries = []
+#         port_search_queries = []
+#
+#         for elem in raw_elements:
+#             if (elem.startswith('"') and elem.endswith('"')) or (
+#                 elem.startswith("'") and elem.endswith("'")
+#             ):
+#                 exact_only_queries.append(elem.strip("'\"").lower())
+#             else:
+#                 port_search_queries.append(elem.strip("'\""))
+#
+#         # 2. Подготовка искомых портов
+#         parsed_targets = []
+#         for q_item in port_search_queries:
+#             item_proto = target_proto
+#             port_str = q_item
+#
+#             if "/" in q_item:
+#                 parts = q_item.split("/", 1)
+#                 item_proto = parts[0].lower().strip()
+#                 port_str = parts[1].strip()
+#
+#             resolved_p = self._resolve_port(port_str)
+#             if resolved_p is not None:
+#                 parsed_targets.append(
+#                     (resolved_p, item_proto.lower() if item_proto else None)
+#                 )
+#
+#         result = []
+#
+#         for obj in objects:
+#             is_match = False
+#             text_raw = obj.get("text", "")
+#             clean_text = text_raw.lower().strip()
+#             header_proto = obj.get("header_proto")
+#
+#             # --- ШАГ 1А: Запрос В КАВЫЧКАХ (строгое совпадение) ---
+#             for q_exact in exact_only_queries:
+#                 if q_exact == clean_text or q_exact in clean_text.split():
+#                     is_match = True
+#                     break
+#
+#             # --- ШАГ 1Б: Запрос БЕЗ кавычек (текстовое совпадение) ---
+#             if not is_match:
+#                 for q_norm in port_search_queries:
+#                     clean_q = q_norm.lower().strip()
+#                     if clean_q == clean_text or clean_q in clean_text.split():
+#                         is_match = True
+#                         break
+#
+#             # --- ШАГ 2: Сопоставление портов и протоколов ---
+#             if not is_match and parsed_targets:
+#                 line_proto = header_proto
+#                 tokens = clean_text.split()
+#
+#                 # Выделяем протокол из самой строки, если он там есть (например service-object tcp/udp/ip/tcp-udp)
+#                 if tokens and tokens[0] == "service-object" and len(tokens) >= 2:
+#                     line_proto = tokens[1]
+#
+#                 line_ranges = []
+#
+#                 # Извлекаем порты (поддерживаем eq, range, gt, lt)
+#                 if "eq" in tokens:
+#                     idx = tokens.index("eq")
+#                     for tok in tokens[idx + 1 :]:
+#                         p_num = self._resolve_port(tok)
+#                         if p_num is not None:
+#                             line_ranges.append((p_num, p_num))
+#                         else:
+#                             break
+#
+#                 elif "range" in tokens:
+#                     idx = tokens.index("range")
+#                     if len(tokens) >= idx + 3:
+#                         sp = self._resolve_port(tokens[idx + 1])
+#                         ep = self._resolve_port(tokens[idx + 2])
+#                         if sp and ep:
+#                             line_ranges.append((sp, ep))
+#
+#                 elif "gt" in tokens:
+#                     idx = tokens.index("gt")
+#                     if len(tokens) >= idx + 2:
+#                         gt_p = self._resolve_port(tokens[idx + 1])
+#                         if gt_p:
+#                             line_ranges.append((gt_p + 1, 65535))
+#
+#                 elif "lt" in tokens:
+#                     idx = tokens.index("lt")
+#                     if len(tokens) >= idx + 2:
+#                         lt_p = self._resolve_port(tokens[idx + 1])
+#                         if lt_p:
+#                             line_ranges.append((1, lt_p - 1))
+#
+#                 # Если порты не были найдены через eq/range, но в строке есть имена (например, "service-object tcp-udp eq www")
+#                 else:
+#                     for tok in tokens:
+#                         p_from_map = self.PORT_MAP.get(tok)
+#                         if p_from_map is not None:
+#                             line_ranges.append((p_from_map, p_from_map))
+#
+#                 # Проверяем вхождение
+#                 for target_p, req_proto in parsed_targets:
+#                     # Проверка совпадения протокола
+#                     if req_proto and line_proto:
+#                         # 'tcp-udp' в Cisco PIX подходит и к TCP, и к UDP
+#                         if line_proto != "tcp-udp" and req_proto not in (
+#                             line_proto,
+#                             "any",
+#                             "ip",
+#                         ):
+#                             continue
+#
+#                     for start_p, end_p in line_ranges:
+#                         if start_p <= target_p <= end_p:
+#                             is_match = True
+#                             break
+#                     if is_match:
+#                         break
+#
+#             result.append((text_raw, is_match))
+#
+#         return result
+#
+#     def check_ip(self, objects, ip):
+#         """Подсветка совпадений по IP (с поддержкой списка через запятую)"""
+#         if not ip:
+#             return [(obj.get("text", ""), False) for obj in objects]
+#
+#         raw_targets = [t.strip() for t in str(ip).split(",") if t.strip()]
+#         parsed_targets = []
+#
+#         for target_str in raw_targets:
+#             try:
+#                 parsed_targets.append(
+#                     ipaddress.ip_network(target_str, strict=False)
+#                 )
+#             except ValueError:
+#                 try:
+#                     parsed_targets.append(
+#                         ipaddress.ip_network(target_str + "/32")
+#                     )
+#                 except ValueError:
+#                     pass
+#
+#         if not parsed_targets:
+#             return [(obj.get("text", ""), False) for obj in objects]
+#
+#         result = []
+#         for obj in objects:
+#             match = False
+#
+#             if obj.get("type") in ["host", "network"]:
+#                 for target_net in parsed_targets:
+#                     if target_net.overlaps(obj.get("network")):
+#                         match = True
+#                         break
+#
+#             elif obj.get("type") == "range":
+#                 for target_net in parsed_targets:
+#                     if (
+#                         obj["start"] <= target_net.network_address <= obj["end"]
+#                         or obj["start"]
+#                         <= target_net.broadcast_address
+#                         <= obj["end"]
+#                     ):
+#                         match = True
+#                         break
+#
+#             elif obj.get("type") == "object_ref":
+#                 name = obj.get("name")
+#                 if name in self.object_networks:
+#                     ref = self.object_networks[name]
+#                     for target_net in parsed_targets:
+#                         if ref["type"] == "range":
+#                             if (
+#                                 ref["start"]
+#                                 <= target_net.network_address
+#                                 <= ref["end"]
+#                                 or ref["start"]
+#                                 <= target_net.broadcast_address
+#                                 <= ref["end"]
+#                             ):
+#                                 match = True
+#                                 break
+#                         elif ref.get("type") in ["host", "network"]:
+#                             if target_net.overlaps(ref.get("network")):
+#                                 match = True
+#                                 break
+#
+#             result.append((obj.get("text", ""), match))
+#
+#         return result
+
 class CiscoPIXParserSVC:
 
-    # Встроенная таблица соответствия имен сервисов Cisco PIX/ASA
     PORT_MAP = {
         'www': 80,
         'http': 80,
@@ -4225,11 +4631,27 @@ class CiscoPIXParserSVC:
     def __init__(self, config_text):
         self.config = config_text.replace("\r\n", "\n")
         self.lines = self.config.splitlines()
+        self.names = self.parse_all_names()  # Маппинг alias -> info dict
         self.object_networks = self.parse_all_object_networks()
         self.all_service_groups = self.parse_all_service_groups()
 
+    def parse_all_names(self):
+        """Парсим директивы name IP ALIAS [description ...]"""
+        names_map = {}
+        for line in self.lines:
+            line_str = line.strip()
+            if line_str.startswith("name "):
+                parts = line_str.split()
+                if len(parts) >= 3:
+                    ip_addr = parts[1]
+                    alias_name = parts[2]
+                    names_map[alias_name] = {
+                        "ip": ip_addr,
+                        "raw_line": line_str,
+                    }
+        return names_map
+
     def _resolve_port(self, val_str):
-        """Преобразует строку в порт (число или имя из таблицы Cisco)."""
         val_clean = str(val_str).strip().lower()
         if val_clean.isdigit():
             p = int(val_clean)
@@ -4237,7 +4659,7 @@ class CiscoPIXParserSVC:
         return self.PORT_MAP.get(val_clean)
 
     def parse_all_object_networks(self):
-        """Парсим object network (аналогично ASA)"""
+        """Парсим object network"""
         objects = {}
         i = 0
         while i < len(self.lines):
@@ -4260,12 +4682,25 @@ class CiscoPIXParserSVC:
                             }
                             i += 1
                         elif next_line.startswith("host"):
-                            ip = next_line.split()[1]
-                            objects[name] = {
-                                "type": "host",
-                                "network": ipaddress.ip_network(ip + "/32"),
-                                "text": next_line,
-                            }
+                            ip_val = next_line.split()[1]
+                            resolved_ip = (
+                                self.names[ip_val]["ip"]
+                                if ip_val in self.names
+                                else ip_val
+                            )
+                            try:
+                                objects[name] = {
+                                    "type": "host",
+                                    "network": ipaddress.ip_network(
+                                        resolved_ip + "/32"
+                                    ),
+                                    "text": next_line,
+                                }
+                            except ValueError:
+                                objects[name] = {
+                                    "type": "object",
+                                    "text": next_line,
+                                }
                             i += 1
                         else:
                             objects[name] = {"type": "object", "text": line}
@@ -4284,15 +4719,12 @@ class CiscoPIXParserSVC:
             if line.startswith("object-group service "):
                 parts = line.split()
                 group_name = parts[2]
-
-                # Если протокол указан прямо в названии группы (object-group service NAME tcp)
                 header_proto = parts[3].lower() if len(parts) >= 4 else None
 
                 members = []
                 i += 1
                 while i < len(self.lines):
                     curr = self.lines[i].strip()
-                    # Конец блока группы
                     if (
                         not curr
                         or not self.lines[i].startswith(" ")
@@ -4300,7 +4732,6 @@ class CiscoPIXParserSVC:
                     ):
                         break
 
-                    # Пропускаем комментарии
                     if curr.startswith("description "):
                         i += 1
                         continue
@@ -4319,8 +4750,11 @@ class CiscoPIXParserSVC:
         return groups
 
     def get_object_group(self, group_name):
-        """Возвращает содержимое сетевых или сервисных групп"""
-        # 1. Сначала ищем среди object-group network
+        """Возвращает содержимое группы, объекта или alias name.
+
+        Если имя не найдено — возвращает None.
+        """
+        # 1. Поиск среди object-group network
         group_start = None
         for i, line in enumerate(self.lines):
             if line.strip() == f"object-group network {group_name}":
@@ -4338,11 +4772,24 @@ class CiscoPIXParserSVC:
 
                 parts = line_stripped.split()
 
-                if line_stripped.startswith("network-object") and len(parts) >= 3:
-                    ip = parts[1]
+                # network-object IP MASK или network-object ALIAS MASK
+                if (
+                    line_stripped.startswith("network-object")
+                    and len(parts) >= 3
+                    and parts[1] != "host"
+                    and parts[1] != "object"
+                ):
+                    ip_or_alias = parts[1]
                     mask = parts[2]
+                    resolved_ip = (
+                        self.names[ip_or_alias]["ip"]
+                        if ip_or_alias in self.names
+                        else ip_or_alias
+                    )
                     try:
-                        net = ipaddress.ip_network(f"{ip}/{mask}", strict=False)
+                        net = ipaddress.ip_network(
+                            f"{resolved_ip}/{mask}", strict=False
+                        )
                         objects.append({
                             "text": line_stripped,
                             "type": "network",
@@ -4351,20 +4798,36 @@ class CiscoPIXParserSVC:
                     except ValueError:
                         pass
 
-                elif line_stripped.startswith("network-object host") and len(parts) >= 3:
-                    ip = parts[2]
-                    objects.append({
-                        "text": line_stripped,
-                        "type": "host",
-                        "network": ipaddress.ip_network(ip + "/32"),
-                    })
+                # network-object host IP или network-object host ALIAS
+                elif (
+                    line_stripped.startswith("network-object host")
+                    and len(parts) >= 3
+                ):
+                    host_or_alias = parts[2]
+                    resolved_ip = (
+                        self.names[host_or_alias]["ip"]
+                        if host_or_alias in self.names
+                        else host_or_alias
+                    )
+                    try:
+                        objects.append({
+                            "text": line_stripped,
+                            "type": "host",
+                            "network": ipaddress.ip_network(
+                                resolved_ip + "/32"
+                            ),
+                        })
+                    except ValueError:
+                        pass
 
+                # network-object object NAME
                 elif len(parts) >= 3 and parts[1] == "object":
                     objects.append({
                         "text": line_stripped,
                         "type": "object_ref",
                         "name": parts[2],
                     })
+
             return objects
 
         # 2. Поиск по одиночной object network
@@ -4391,20 +4854,19 @@ class CiscoPIXParserSVC:
                 })
             return objects
 
-        return [
-            {
-                "text": f"object-group {group_name}",
-                "type": "service_object_ref",
-                "name": group_name,
-            }
-        ]
+        # 4. Поиск по имени из name (alias -> IP)
+        if group_name in self.names:
+            ip_str = self.names[group_name]["ip"]
+            net = ipaddress.ip_network(f"{ip_str}/32")
+            return [{"text": ip_str, "type": "host", "network": net}]
+
+        # Не найдено ничего
+        return None
 
     def check_service(self, objects, target_query=None, target_proto=None):
-        """Подсветка совпадений по сервисам и портам Cisco PIX/ASA"""
-        if not target_query:
-            return [(obj.get("text", ""), False) for obj in objects]
+        if not objects or not target_query:
+            return [(obj.get("text", ""), False) for obj in (objects or [])]
 
-        # 1. Разбиваем запрос по запятым
         raw_elements = [
             q.strip() for q in str(target_query).split(",") if q.strip()
         ]
@@ -4420,7 +4882,6 @@ class CiscoPIXParserSVC:
             else:
                 port_search_queries.append(elem.strip("'\""))
 
-        # 2. Подготовка искомых портов
         parsed_targets = []
         for q_item in port_search_queries:
             item_proto = target_proto
@@ -4445,13 +4906,11 @@ class CiscoPIXParserSVC:
             clean_text = text_raw.lower().strip()
             header_proto = obj.get("header_proto")
 
-            # --- ШАГ 1А: Запрос В КАВЫЧКАХ (строгое совпадение) ---
             for q_exact in exact_only_queries:
                 if q_exact == clean_text or q_exact in clean_text.split():
                     is_match = True
                     break
 
-            # --- ШАГ 1Б: Запрос БЕЗ кавычек (текстовое совпадение) ---
             if not is_match:
                 for q_norm in port_search_queries:
                     clean_q = q_norm.lower().strip()
@@ -4459,18 +4918,15 @@ class CiscoPIXParserSVC:
                         is_match = True
                         break
 
-            # --- ШАГ 2: Сопоставление портов и протоколов ---
             if not is_match and parsed_targets:
                 line_proto = header_proto
                 tokens = clean_text.split()
 
-                # Выделяем протокол из самой строки, если он там есть (например service-object tcp/udp/ip/tcp-udp)
                 if tokens and tokens[0] == "service-object" and len(tokens) >= 2:
                     line_proto = tokens[1]
 
                 line_ranges = []
 
-                # Извлекаем порты (поддерживаем eq, range, gt, lt)
                 if "eq" in tokens:
                     idx = tokens.index("eq")
                     for tok in tokens[idx + 1 :]:
@@ -4502,18 +4958,14 @@ class CiscoPIXParserSVC:
                         if lt_p:
                             line_ranges.append((1, lt_p - 1))
 
-                # Если порты не были найдены через eq/range, но в строке есть имена (например, "service-object tcp-udp eq www")
                 else:
                     for tok in tokens:
                         p_from_map = self.PORT_MAP.get(tok)
                         if p_from_map is not None:
                             line_ranges.append((p_from_map, p_from_map))
 
-                # Проверяем вхождение
                 for target_p, req_proto in parsed_targets:
-                    # Проверка совпадения протокола
                     if req_proto and line_proto:
-                        # 'tcp-udp' в Cisco PIX подходит и к TCP, и к UDP
                         if line_proto != "tcp-udp" and req_proto not in (
                             line_proto,
                             "any",
@@ -4533,9 +4985,8 @@ class CiscoPIXParserSVC:
         return result
 
     def check_ip(self, objects, ip):
-        """Подсветка совпадений по IP (с поддержкой списка через запятую)"""
-        if not ip:
-            return [(obj.get("text", ""), False) for obj in objects]
+        if not objects or not ip:
+            return [(obj.get("text", ""), False) for obj in (objects or [])]
 
         raw_targets = [t.strip() for t in str(ip).split(",") if t.strip()]
         parsed_targets = []
@@ -4598,6 +5049,133 @@ class CiscoPIXParserSVC:
                                 match = True
                                 break
 
+            result.append((obj.get("text", ""), match))
+
+        return result
+
+import ipaddress
+from collections import defaultdict
+
+
+class EltexObjectGroupParserSVC:
+    def __init__(self, config_text: str):
+        self.config_lines = config_text.splitlines()
+        self.network_groups = defaultdict(list)  # {group_name: [{'text': ..., 'network': ...}, ...]}
+        self.service_groups = defaultdict(list)  # {group_name: [{'text': ..., 'start': ..., 'end': ...}, ...]}
+        self._parse()
+
+    def _parse(self):
+        current_group_type = None  # 'network' или 'service'
+        current_group_name = None
+
+        for line in self.config_lines:
+            line_str = line.strip()
+            if not line_str or line_str.startswith("!"):
+                continue
+
+            # Определяем начало группы network
+            if line_str.startswith("object-group network "):
+                current_group_type = "network"
+                current_group_name = line_str.split()[2]
+                continue
+
+            # Определяем начало группы service
+            elif line_str.startswith("object-group service "):
+                current_group_type = "service"
+                current_group_name = line_str.split()[2]
+                continue
+
+            # Выход из секции группы
+            elif line_str == "exit":
+                current_group_type = None
+                current_group_name = None
+                continue
+
+            # Разбор строк внутри группы network
+            if current_group_type == "network" and current_group_name:
+                parts = line_str.split()
+                if len(parts) >= 3 and parts[0] == "ip" and parts[1] == "prefix":
+                    raw_net = parts[2]
+                    try:
+                        net = ipaddress.ip_network(raw_net, strict=False)
+                        self.network_groups[current_group_name].append({
+                            "text": raw_net,
+                            "type": "network" if net.prefixlen != 32 else "host",
+                            "network": net
+                        })
+                    except ValueError:
+                        continue
+
+            # Разбор строк внутри группы service
+            elif current_group_type == "service" and current_group_name:
+                parts = line_str.split()
+                if len(parts) >= 2 and parts[0] == "port-range":
+                    raw_port = parts[1]
+                    if "-" in raw_port:
+                        start_str, end_str = raw_port.split("-", 1)
+                        if start_str.isdigit() and end_str.isdigit():
+                            self.service_groups[current_group_name].append({
+                                "text": raw_port,
+                                "type": "port_range",
+                                "start": int(start_str),
+                                "end": int(end_str)
+                            })
+                    else:
+                        if raw_port.isdigit():
+                            port = int(raw_port)
+                            self.service_groups[current_group_name].append({
+                                "text": raw_port,
+                                "type": "port",
+                                "start": port,
+                                "end": port
+                            })
+
+    def get_object_group(self, group_name: str):
+        """
+        Возвращает содержимое object-group (network или service) в виде списка словарей.
+        Если группа не найдена — возвращает None.
+        """
+        # 1. Поиск среди network groups
+        if group_name in self.network_groups:
+            return self.network_groups[group_name]
+
+        # 2. Поиск среди service groups
+        if group_name in self.service_groups:
+            return self.service_groups[group_name]
+
+        return None
+
+    def check_ip(self, objects, target_ip):
+        """
+        Вспомогательный метод для проверки совпадений по IP с результатами get_object_group.
+        """
+        if not objects or not target_ip:
+            return [(obj.get("text", ""), False) for obj in (objects or [])]
+
+        raw_targets = [t.strip() for t in str(target_ip).split(",") if t.strip()]
+        parsed_targets = []
+
+        for t_str in raw_targets:
+            try:
+                parsed_targets.append(ipaddress.ip_network(t_str, strict=False))
+            except ValueError:
+                try:
+                    parsed_targets.append(ipaddress.ip_network(t_str + "/32"))
+                except ValueError:
+                    pass
+
+        if not parsed_targets:
+            return [(obj.get("text", ""), False) for obj in objects]
+
+        result = []
+        for obj in objects:
+            match = False
+            obj_net = obj.get("network")
+            if obj_net:
+                for target_net in parsed_targets:
+                    if target_net.overlaps(obj_net):
+                        match = True
+                        break
             result.append((obj.get("text", ""), match))
 
         return result

@@ -1,7 +1,8 @@
 import ipaddress
 import os
 
-from unpack_group_parser import CiscoASAParserSVC, CiscoIOSXEParserSVC, CiscoFirepowerParserSVC, CiscoNexusParserSVC, CiscoPIXParserSVC, HuaweiVRPParserSVC, FortigateParserSVC
+from unpack_group_parser import (CiscoASAParserSVC, CiscoIOSXEParserSVC, CiscoFirepowerParserSVC, CiscoNexusParserSVC,
+                                 CiscoPIXParserSVC, HuaweiVRPParserSVC, FortigateParserSVC,EltexObjectGroupParserSVC)
 
 # BASE_DIR = "data/config_files_clear"
 
@@ -10,7 +11,6 @@ from unpack_group_parser import CiscoASAParserSVC, CiscoIOSXEParserSVC, CiscoFir
 # BASE_DIR = DATA_DIR + "/config_files_clear"
 from path import DATA_DIR
 BASE_DIR = DATA_DIR+"/config_files_clear"
-# BASE_DIR="/home/PR.RT.RU/a.kalyaev/PycharmProjects/PythonProject/data/config_files_clear"
 
 
 def find_device_config(device):
@@ -51,6 +51,8 @@ def detect_vendor(path):
         return "cisco_pix"
     if "Huawei VRP" in path:
         return "huawei_vrp"
+    if "Eltex ESR" in path:
+        return "eltex_esr"
 
     return None
 def get_object_group(device, group):
@@ -79,6 +81,8 @@ def get_object_group(device, group):
         parser = HuaweiVRPParserSVC(config)
     elif vendor == "cisco_pix":
         parser = CiscoPIXParserSVC(config)
+    elif vendor == "eltex_esr":
+        parser = EltexObjectGroupParserSVC(config)
 
 
     else:

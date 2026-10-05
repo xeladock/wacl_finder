@@ -251,8 +251,16 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
             #             yield(vv + ": \n" + "\n".join(res) + "\n")
         elif k2 in ('HPE OfficeConnect', 'HPE Comware 1910', 'HPE Comware', '3Com Comware 1910'):
             for vv in v:  # список файлов
-                res = HPEParser2.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
-        ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
+                res = HPEParser2.from_local_file(
+                    vv,
+                    search_text[0],
+                    search_text[1],
+                    strict_mode=strict_mode,
+                    ignore_src_any=ignore_src_any,
+                    ignore_dst_any=ignore_dst_any,
+                    src_mask_limit=src_mask_limit,
+                    dst_mask_limit=dst_mask_limit  # Вы упомянули, что передаете base_dir
+                )
                 if res:
                     res_device[k1, region(vv)].append(vv)
                     yield (f"----{k2} {k1} {region(vv)}----")

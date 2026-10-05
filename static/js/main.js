@@ -36,7 +36,7 @@ function openOgViewer() {
 }
 
 
- 
+
     function openNbViewer() {
         const width = 980;
         const height = 780;
@@ -103,7 +103,7 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
     }
 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        downloadResult();
+        DownloadResultTXT();
     }
 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault();
@@ -713,8 +713,8 @@ async function performSearch() {
 //        stopSearch(false);
 //    }
 //}
-     
-  
+
+
 function isValidIPorNetwork(str) {
         if (str === 'any') return true;
 
@@ -750,7 +750,7 @@ function getLocalFilename(extension) {
 
     return `acl_search_result_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.${extension}`;
 }
-       
+
 function DownloadResultTXT() {
     const saveBtn = document.getElementById('save-btn');
 
