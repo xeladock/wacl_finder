@@ -234,7 +234,7 @@ async def search(request: SearchRequest):
                     ):
                         yield chunk
             else:
-                print("req_any_dst: ",request.ignore_dst_any)
+                # print("req_any_dst: ",request.ignore_dst_any)
                 generator = parse_acl_main(request.source_ip, request.dest_ip, request.regions, allowed_platforms,
                                            request.ues, request.strict_mode, ignore_src_any=request.ignore_src_any,
                             ignore_dst_any=request.ignore_dst_any,

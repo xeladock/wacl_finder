@@ -1433,40 +1433,6 @@ class CiscoASAParser5:
     # Алиасы для поддержания полной совместимости
     find_matches = find_acl_matches
 
-    @classmethod
-    def from_local_file(
-            cls,
-            filename,
-            src_ip=None,
-            dst_ip=None,
-            strict_mode=False,
-            ignore_src_any=False,
-            ignore_dst_any=False,
-            src_mask_limit=None,
-            dst_mask_limit=None,
-            base_dir=base_dir,
-            encoding="utf-8"
-    ):
-        for root, _, files in os.walk(base_dir):
-            for file in files:
-                if file == filename:
-                    full_path = os.path.join(root, file)
-                    try:
-                        with open(full_path, "r", encoding=encoding, errors="ignore") as f:
-                            config_text = f.read()
-                        parser = cls(config_text)
-                        return parser.find_acl_matches(
-                            src_ip=src_ip,
-                            dst_ip=dst_ip,
-                            strict_mode=strict_mode,
-                            ignore_src_any=ignore_src_any,
-                            ignore_dst_any=ignore_dst_any,
-                            src_mask_limit=src_mask_limit,
-                            dst_mask_limit=dst_mask_limit
-                        )
-                    except Exception:
-                        return tuple()
-        return tuple()
 
 
 class FortiOSParser2:
@@ -5156,34 +5122,48 @@ class QTechParser(BaseACLParser):
         dst = "any" if acl_type == 'standard' else parse_entry(i)[0]
         return src, dst
 
-
 class ACLParserFactory:
-    # Сопоставление названия ОС с соответствующим классом парсера
     PARSERS = {
+        'Cisco ASA': CiscoASAParser5,
+        'Cisco FXOS': CiscoASAParser5,
+        'Cisco PIX': CiscoASAParser5,
+        'FortiOS': FortiOSParser2,
         'Cisco IOS': CiscoIOSParser2,
-        # 'HP ProCurve': HPProCurveParser2,
-        'B4COM BCOM-OS-DC': IPInfusionParser,  # Синтаксис Cisco-like
-        'B4COM BCOM-OS-DC (VXLAN)': IPInfusionParser,  # Синтаксис Cisco-like
-        'EdgeCore': EdgeCoreParser,  # Синтаксис Cisco-like
-        'IBM_Lenovo Network OS': IBMLenovoParser,  # Синтаксис Cisco-like
+        'Cisco IOS XE': CiscoIOSXEParser2,
+        'Cisco IOS XR': CiscoIOSXEParser2,
+        'HP ProCurve': HPProCurveParser2,
+        'B4COM BCOM-OS-DC': IPInfusionParser,
+        'B4COM BCOM-OS-DC (VXLAN)': IPInfusionParser,
+        'EdgeCore': EdgeCoreParser,
+        'IBM_Lenovo Network OS': IBMLenovoParser,
         'Dell Networking OS': DellOSParser,
-        'QTECH NOS': QTechParser  # Синтаксис Cisco-like
+        'QTECH': QTechParser,
+        'Cisco NX-OS': CiscoNexusParser2,
+        'Huawei VRP': HuaweiParser4,
+        'Huawei VRP 2403': HuaweiParser4,
+        'Juniper Junos': JuniperACLParser2,
+        'Eltex': EltexACLParser2,
+        'Eltex ESR': EltexESRParser2,
+        'HPE OfficeConnect': HPEParser2,
+        'HPE Comware 1910': HPEParser2,
+        'HPE Comware': HPEParser2,
+        '3Com Comware 1910': HPEParser2,
     }
 
     @classmethod
     def parse_from_file(
-            cls,
-            vendor_os,
-            filename,
-            src_ip,
-            dst_ip,
-            strict_mode=False,
-            ignore_src_any=False,
-            ignore_dst_any=False,
-            src_mask_limit=None,
-            dst_mask_limit=None,
-            base_dir=base_dir,
-            encoding="utf-8"
+        cls,
+        vendor_os,
+        filename,
+        src_ip="any",
+        dst_ip="any",
+        strict_mode=False,
+        ignore_src_any=False,
+        ignore_dst_any=False,
+        src_mask_limit=None,
+        dst_mask_limit=None,
+        base_dir=base_dir,
+        encoding="utf-8"
     ):
         parser_cls = cls.PARSERS.get(vendor_os)
         if not parser_cls:
@@ -5199,11 +5179,13 @@ class ACLParserFactory:
                 except Exception:
                     return tuple()
 
-                # Инициализация парсера нужного вендора и поиск совпадений
+                # 1. Передаем конфиг в __init__ конкретного класса
                 parser = parser_cls(config_text)
+
+                # 2. Передаем критерии поиска в метод поиска конкретного класса
                 return parser.find_acl_matches(
-                    src_ip,
-                    dst_ip,
+                    src_ip=src_ip,
+                    dst_ip=dst_ip,
                     strict_mode=strict_mode,
                     ignore_src_any=ignore_src_any,
                     ignore_dst_any=ignore_dst_any,
