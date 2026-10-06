@@ -142,12 +142,12 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
         # print("k2 is:", k2)
         if allowed_platforms and k2 not in allowed_platforms:
             continue
-        parser_cls = PARSERS_MAP.get(k2)
+        # parser_cls = PARSERS_MAP.get(k2)
         if k2 in ('Cisco ASA', 'Cisco FXOS', 'Cisco PIX'):
         # if k2 in ('Cisco ASA', 'Cisco FXOS'):
         #     print(k ,v)
             for vv in v:
-                res = parser_cls.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
+                res = CiscoASAParser5.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
         ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
         # print(res)
                 if res:
