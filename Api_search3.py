@@ -5,7 +5,7 @@ from urllib3.exceptions import InsecureRequestWarning
 from collections import defaultdict
 from class_resolver import (CiscoNexusParser2, JuniperACLParser2, FortiOSParser2,
                             CiscoIOSXEParser2, CiscoIOSParser2, EltexACLParser2, CiscoASAParser5, EltexESRParser2,
-                            HPEParser2, HuaweiParser4, ACLParserFactory
+                            HPEParser2, HuaweiParser4, ACLParserFactory, QTechParser
                             )
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -72,6 +72,7 @@ PARSERS_MAP = {
     'HPE Comware 1910': HPEParser2,
     'HPE Comware':HPEParser2,
     '3Com Comware 1910':HPEParser2,
+    'QTECH NOS': QTechParser,
 }
 
 
@@ -225,6 +226,18 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
             for vv in v:
                 res = EltexESRParser2.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
         ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
+                # print(res)
+                if res:
+                    res_device[k1, region(vv)].append(vv)
+                    yield (f"----{k2} {k1} {region(vv)}----")
+                    yield (vv + ": \n" + "\n".join(res) + "\n")
+        elif k2 == 'QTECH NOS':
+            # print(v)
+            for vv in v:
+                res = QTechParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,
+                                                      ignore_src_any=ignore_src_any,
+                                                      ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit,
+                                                      dst_mask_limit=dst_mask_limit)
                 # print(res)
                 if res:
                     res_device[k1, region(vv)].append(vv)
