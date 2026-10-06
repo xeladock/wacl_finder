@@ -3,9 +3,9 @@ import sys
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 from collections import defaultdict
-from class_resolver import (CiscoNexusParser2, JuniperACLParser2, FortiOSParser2,CiscoIOSXEParser,
+from class_resolver import (CiscoNexusParser2, JuniperACLParser2, FortiOSParser2,
                             CiscoIOSXEParser2, CiscoIOSParser2, EltexACLParser2, CiscoASAParser5, EltexESRParser2,
-                            HPEParser2, HuaweiParser4
+                            HPEParser2, HuaweiParser4, ACLParserFactory
                             )
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -53,15 +53,15 @@ PARSERS_MAP = {
     'Cisco FXOS': CiscoASAParser5,
     'Cisco PIX': CiscoASAParser5,
     'FortiOS': FortiOSParser2,
-    'Cisco IOS': CiscoIOSParser2,
+    'Cisco IOS': ACLParserFactory,
     'Cisco IOS XE': CiscoIOSXEParser2,
     'Cisco IOS XR': CiscoIOSXEParser2,
-    'HP ProCurve': CiscoIOSParser2,
-    'B4COM BCOM-OS-DC': CiscoIOSParser2,
-    'B4COM BCOM-OS-DC (VXLAN)': CiscoIOSParser2,
+    'HP ProCurve': ACLParserFactory,
+    'B4COM BCOM-OS-DC': ACLParserFactory,
+    'B4COM BCOM-OS-DC (VXLAN)': ACLParserFactory,
     'EdgeCore': CiscoIOSParser2,
-    'IBM_Lenovo Network OS': CiscoIOSParser2,
-    'Dell Networking OS': CiscoIOSParser2,
+    'IBM_Lenovo Network OS': ACLParserFactory,
+    'Dell Networking OS': ACLParserFactory,
     'Cisco NX-OS':CiscoNexusParser2,
     'Huawei VRP': HuaweiParser4,
     'Huawei VRP 2403': HuaweiParser4,
@@ -86,16 +86,12 @@ def region(vv):
 
 def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False,ignore_src_any=False,
         ignore_dst_any=False, src_mask_limit=None, dst_mask_limit=None):
-    # print(allowed_prefixes, allowed_platforms,allowed_ues)
-    # print("output dir is:",output_dir)
-    # print("здесь 1:", APP_DIR)
-    # print("а здесь?")
+
     search_text = (src_ip, dst_ip)
-    # print("search_text:",search_text)
     dd = defaultdict(list)
     # print("base dd")
     # prefix_to_region = {v: k for k, v in PREFIX_LABELS.items()}
-    print("begis any_boxes is: ", ignore_src_any, ignore_dst_any)
+    # print("begis any_boxes is: ", ignore_src_any, ignore_dst_any)
     for root, dirs, files in os.walk(output_dir,followlinks=True):
         # print("rdf", root, dirs, files)
         # parts = root.split(os.sep)[1:]
@@ -138,27 +134,19 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
                         if file.startswith(reg):
                             dd[(loc, pl)].append(file)
 
-
-
-    # print("DEBUG: dd после фильтрации =", dict(dd))
-    # print(dd)
-    # results = []
-    # print(dd)
-    # print(allowed_ues, "allow_ues")
-    # print("allowed_prefixes:", allowed_prefixes)
-    # print("allowed_platforms:", allowed_platforms)
-    print("dd: ",dd)
+    # print("dd: ",dd)
     res_device=defaultdict(list)
     # ignore_dst_any=True
     for (k1, k2), v in dd.items():
         # print("k2 is:", k2)
         if allowed_platforms and k2 not in allowed_platforms:
             continue
-        # parser_cls = PARSERS_MAP.get(k2)
+        parser_cls = PARSERS_MAP.get(k2)
         if k2 in ('Cisco ASA', 'Cisco FXOS', 'Cisco PIX'):
-            # print(k ,v)
+        # if k2 in ('Cisco ASA', 'Cisco FXOS'):
+        #     print(k ,v)
             for vv in v:
-                res = CiscoASAParser5.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
+                res = parser_cls.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
         ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
         # print(res)
                 if res:
@@ -168,7 +156,6 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
         elif k2 == 'FortiOS':
             # print(k1,k2,v)
             for vv in v:
-                # res = FortiOSParser.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode)
                 res = FortiOSParser2.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
         ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
                 # print(res)
@@ -178,16 +165,16 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
                     yield (vv + ": \n" + "\n".join(res) + "\n")
 
         elif k2 in (
-        'Cisco IOS', 'HP ProCurve', 'B4COM BCOM-OS-DC', 'B4COM BCOM-OS-DC (VXLAN)', 'EdgeCore', 'IBM_Lenovo Network OS',
+        'Cisco IOS', 'HP ProCurve', 'B4COM BCOM-OS-DC', 'B4COM BCOM-OS-DC (VXLAN)', 'QTECH NOS', 'EdgeCore', 'IBM_Lenovo Network OS',
         'Dell Networking OS'):
             for vv in v:
-                res = CiscoIOSParser2.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
+                res = ACLParserFactory.parse_from_file(k2, vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,
         ignore_dst_any=ignore_dst_any, src_mask_limit=src_mask_limit, dst_mask_limit=dst_mask_limit)
                 if res:
                     res_device[k1, region(vv)].append(vv)
                     yield (f"----{k2} {k1} {region(vv)}----")
                     yield (vv + ": \n" + "\n".join(res) + "\n")
-        elif k2 in ('Cisco IOS XE', 'Cisco IOS XR'):
+        elif k2 in ('Cisco IOS XE', 'Cisco IOS XR2'):
             for vv in v:
                 # print(vv)
                 res = CiscoIOSXEParser2.from_local_file(vv, search_text[0], search_text[1], strict_mode=strict_mode,ignore_src_any=ignore_src_any,

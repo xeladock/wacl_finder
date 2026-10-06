@@ -54,7 +54,7 @@ PLATFORM_GROUPS = {
     "Eltex ESR": ("Eltex ESR",),
     "HP ProCurve/HPE": ("HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"),
     "Прочие устройства": (
-        "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore", "IBM_Lenovo Network OS",
+        "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore", "QTECH NOS", "IBM_Lenovo Network OS",
         "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
     ),
 }

@@ -270,7 +270,7 @@ def main():
 
                 data_platforms = (
                     'AlteonOS', 'Citrix MPX', 'D-Link', 'Cisco UCS',
-                    'Cisco WLC', 'Cisco Small Business Software', 'Juniper Junos E-Series'
+                    'Cisco WLC', 'Cisco Small Business Software', 'Juniper Junos E-Series' , 'IronWare', 'Raisecom'
                 )
                 ALTER_DIR = os.path.join(BASE_DIR,"alter_confs_"+date_str)
                 if not os.path.exists(ALTER_DIR):
