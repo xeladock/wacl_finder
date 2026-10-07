@@ -2,7 +2,6 @@ import asyncio
 import csv
 import glob
 import io
-
 import openpyxl
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse,RedirectResponse
@@ -43,21 +42,41 @@ app.include_router(nb_router)
 app.mount("/static", StaticFiles(directory=os.path.join(APP_DIR, "static")), name="static")
 
 PLATFORM_GROUPS = {
-    "Cisco ASA": ("Cisco ASA",),
-    "Cisco Firepower": ("Cisco FXOS",),
-    "Cisco IOS": ("Cisco IOS",),
-    "Cisco IOS XE": ("Cisco IOS XE",),
-    "Cisco NX-OS": ("Cisco NX-OS",),
-    "FortiOS": ("FortiOS",),
-    "Huawei": ("Huawei VRP", "Huawei VRP 2403"),
-    "Eltex": ("Eltex",),
-    "Eltex ESR": ("Eltex ESR",),
-    "HP ProCurve/HPE": ("HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"),
-    "Прочие устройства": (
-        "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore", "QTECH NOS", "IBM_Lenovo Network OS",
-        "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
-    ),
+    "Cisco ASA": frozenset({"Cisco ASA"}),
+    "Cisco Firepower": frozenset({"Cisco FXOS"}),
+    "Cisco IOS": frozenset({"Cisco IOS"}),
+    "Cisco IOS XE": frozenset({"Cisco IOS XE"}),
+    "Cisco NX-OS": frozenset({"Cisco NX-OS"}),
+    "FortiOS": frozenset({"FortiOS"}),
+    "Huawei": frozenset({"Huawei VRP", "Huawei VRP 2403"}),
+    "Eltex": frozenset({"Eltex"}),
+    "Eltex ESR": frozenset({"Eltex ESR"}),
+    "HP ProCurve/HPE": frozenset({
+        "HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"
+    }),
+    "Прочие устройства": frozenset({
+        "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore",
+        "QTECH NOS", "IBM_Lenovo Network OS", "Dell Networking OS",
+        "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
+    }),
 }
+
+# PLATFORM_GROUPS = {
+#     "Cisco ASA": ("Cisco ASA",),
+#     "Cisco Firepower": ("Cisco FXOS",),
+#     "Cisco IOS": ("Cisco IOS",),
+#     "Cisco IOS XE": ("Cisco IOS XE",),
+#     "Cisco NX-OS": ("Cisco NX-OS",),
+#     "FortiOS": ("FortiOS",),
+#     "Huawei": ("Huawei VRP", "Huawei VRP 2403"),
+#     "Eltex": ("Eltex",),
+#     "Eltex ESR": ("Eltex ESR",),
+#     "HP ProCurve/HPE": ("HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"),
+#     "Прочие устройства": (
+#         "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore", "QTECH NOS", "IBM_Lenovo Network OS",
+#         "Dell Networking OS", "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
+#     ),
+# }
 
 # PLATFORM_GROUPS = {
 #     "Cisco ASA": ["Cisco ASA"],

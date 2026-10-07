@@ -112,8 +112,11 @@ async def search_og(data: OGSearchRequest):
 
         # Определяем, является ли группа сервисной
         is_service_group = any(
-            obj.get("type") in (
-            "service", "service_group_ref", "service_object", "service_object_ref", "service_single")
+            obj.get("type") in frozenset({
+                "service", "service_group_ref", "service_object",
+                "service_object_ref", "service_single",
+                "port", "port_range"  # <-- ДОБАВЛЕНЫ ТИПЫ ELTEX
+            })
             for obj in objects
         )
 
@@ -125,7 +128,7 @@ async def search_og(data: OGSearchRequest):
 
             if "/" in query and not query.startswith("1"):  # защита от случайных /24
                 parts = query.split("/")
-                if len(parts) == 2 and parts[0].lower() in ("tcp", "udp", "ip"):
+                if len(parts) == 2 and parts[0].lower() in frozenset({"tcp", "udp", "ip"}):
                     target_proto = parts[0].lower()
                     target_port = parts[1]
 
@@ -142,7 +145,7 @@ async def search_og(data: OGSearchRequest):
                 check_results = [(obj["text"], False) for obj in objects]
                 print("else 1")
         else:
-            print("else 2")
+            # print("else 2")
             # Стандартный поиск по IP-адресам/сетям
             check_results = parser.check_ip(objects, query)
 

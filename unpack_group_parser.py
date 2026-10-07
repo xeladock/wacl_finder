@@ -52,29 +52,42 @@ class CiscoASAParserSVC:
         except (OSError, TypeError):
             return None
 
-    def check_service(self, objects, target_port=None, target_proto=None):
-        """
-        Проверка сервисов с гарантированной фильтрацией по TCP/UDP.
-        """
-        if not target_port:
+    def check_service(self, objects, target_port=None, target_proto=None, _parsed_targets=None):
+        if not target_port and not _parsed_targets:
             return [(obj["text"], False) for obj in objects]
 
-        raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+        if _parsed_targets is None:
+            raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+            parsed_targets = []
 
-        parsed_targets = []
-        for item in raw_items:
-            item_proto = target_proto
-            port_str = item
+            # Нормализуем дефолтный протокол, пришедший извне
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
 
-            # Парсим "udp/88" -> proto="udp", port="88"
-            if "/" in item:
-                parts = item.split("/", 1)
-                item_proto = parts[0].lower().strip()
-                port_str = parts[1].strip()
+            for idx, item in enumerate(raw_items):
+                item_proto = None
+                port_str = item
 
-            resolved_p = self._resolve_port(port_str)
-            if resolved_p is not None:
-                parsed_targets.append((resolved_p, item_proto.lower() if item_proto else None))
+                # 1. Если явный слэш указан прям в элементе ("udp/88")
+                if "/" in item:
+                    parts = item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                # 2. Если слэша нет, но это ПЕРВЫЙ элемент (idx == 0) и внешняя функция передала target_proto
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
+
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = self._resolve_port(port_str)
+                if resolved_p is not None:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
 
         if not parsed_targets:
             return [(obj["text"], False) for obj in objects]
@@ -83,36 +96,29 @@ class CiscoASAParserSVC:
         for obj in objects:
             match = False
             obj_type = obj.get("type")
-            text_line = obj.get("text", "").lower()
 
             if obj_type == "service":
                 start_p = obj.get("start_port")
                 end_p = obj.get("end_port")
+                text_line = obj.get("text", "").lower()
                 obj_proto = str(obj.get("proto", "ip")).lower()
+
+                if "service-object tcp" in text_line or "port-object tcp" in text_line:
+                    obj_proto = "tcp"
+                elif "service-object udp" in text_line or "port-object udp" in text_line:
+                    obj_proto = "udp"
 
                 if start_p is not None and end_p is not None:
                     for target_p, req_proto in parsed_targets:
-                        # 1. Попадание в диапазон портов
-                        port_match = (start_p <= target_p <= end_p)
+                        if not (start_p <= target_p <= end_p):
+                            continue
 
-                        # 2. Проверка протокола (комбинация структуры объекта и прямой проверки строки)
                         proto_match = True
-                        if req_proto in ("udp", "tcp"):
-                            # Если запрошен udp, а в строке написано 'tcp' (и это не 'tcp-udp'), отбраковываем
-                            if req_proto == "udp":
-                                if "tcp" in text_line and "tcp-udp" not in text_line and obj_proto == "tcp":
-                                    proto_match = False
-                                elif obj_proto not in ("udp", "ip", "tcp-udp", "any"):
-                                    proto_match = False
+                        if req_proto in ("tcp", "udp"):
+                            if obj_proto in ("tcp", "udp") and obj_proto != req_proto:
+                                proto_match = False
 
-                            # Если запрошен tcp, а в строке написано 'udp' (и это не 'tcp-udp'), отбраковываем
-                            elif req_proto == "tcp":
-                                if "udp" in text_line and "tcp-udp" not in text_line and obj_proto == "udp":
-                                    proto_match = False
-                                elif obj_proto not in ("tcp", "ip", "tcp-udp", "any"):
-                                    proto_match = False
-
-                        if port_match and proto_match:
+                        if proto_match:
                             match = True
                             break
 
@@ -120,7 +126,10 @@ class CiscoASAParserSVC:
                 ref_name = obj.get("name")
                 if ref_name:
                     sub_objects = self.get_object_group(ref_name)
-                    sub_matches = self.check_service(sub_objects, target_port=target_port, target_proto=target_proto)
+                    sub_matches = self.check_service(
+                        sub_objects,
+                        _parsed_targets=parsed_targets
+                    )
                     if any(m[1] for m in sub_matches):
                         match = True
 
@@ -632,28 +641,46 @@ class CiscoIOSXEParserSVC:
 
         return objects
 
-    def check_service(self, objects, target_port=None, target_proto=None):
+    def check_service(self, objects, target_port=None, target_proto=None, _parsed_targets=None):
         """
-        Проверка сервисов IOS XE с гарантированной фильтрацией по TCP/UDP.
+        Проверка сервисов IOS XE с изолированной фильтрацией по TCP/UDP для каждого порта.
         """
-        if not target_port:
+        if not target_port and not _parsed_targets:
             return [(obj["text"], False) for obj in objects]
 
-        raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+        # 1. Формируем распарсенный список целей с привязкой протокола (только на верхнем вызове)
+        if _parsed_targets is None:
+            raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+            parsed_targets = []
 
-        parsed_targets = []
-        for item in raw_items:
-            item_proto = target_proto
-            port_str = item
+            # Нормализуем протокол по умолчанию
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
 
-            if "/" in item:
-                parts = item.split("/", 1)
-                item_proto = parts[0].lower().strip()
-                port_str = parts[1].strip()
+            for idx, item in enumerate(raw_items):
+                item_proto = None
+                port_str = item
 
-            resolved_p = self._resolve_port(port_str)
-            if resolved_p is not None:
-                parsed_targets.append((resolved_p, item_proto.lower() if item_proto else None))
+                # Если префикс "udp/8088" явно указан в элементе
+                if "/" in item:
+                    parts = item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                # Если слэша нет, но это первый элемент (idx == 0) и внешняя функция передала target_proto
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
+
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = self._resolve_port(port_str)
+                if resolved_p is not None:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
 
         if not parsed_targets:
             return [(obj["text"], False) for obj in objects]
@@ -662,34 +689,33 @@ class CiscoIOSXEParserSVC:
         for obj in objects:
             match = False
             obj_type = obj.get("type")
-            text_line = obj.get("text", "").lower()
 
             if obj_type == "service":
                 start_p = obj.get("start_port")
                 end_p = obj.get("end_port")
+                text_line = obj.get("text", "").lower()
                 obj_proto = str(obj.get("proto", "ip")).lower()
+
+                # Уточняем протокол из текста строки IOS XE ("tcp eq 22", "udp eq 8088")
+                parts = text_line.split()
+                if parts and parts[0] in ("tcp", "udp"):
+                    obj_proto = parts[0]
 
                 if start_p is not None and end_p is not None:
                     for target_p, req_proto in parsed_targets:
-                        # 1. Попадание в диапазон портов
-                        port_match = (start_p <= target_p <= end_p)
+                        # 1. Проверка диапазона портов
+                        if not (start_p <= target_p <= end_p):
+                            continue
 
-                        # 2. Строгая проверка протокола по совпадению и по тексту строки
+                        # 2. Проверка протокола
                         proto_match = True
-                        if req_proto in ("udp", "tcp"):
-                            if req_proto == "udp":
-                                if "tcp" in text_line and "tcp-udp" not in text_line and obj_proto == "tcp":
-                                    proto_match = False
-                                elif obj_proto not in ("udp", "ip", "tcp-udp", "any"):
-                                    proto_match = False
+                        if req_proto in ("tcp", "udp"):
+                            if obj_proto in ("tcp", "udp") and obj_proto != req_proto:
+                                proto_match = False
+                            elif obj_proto not in ("tcp", "udp", "ip", "tcp-udp", "any"):
+                                proto_match = False
 
-                            elif req_proto == "tcp":
-                                if "udp" in text_line and "tcp-udp" not in text_line and obj_proto == "udp":
-                                    proto_match = False
-                                elif obj_proto not in ("tcp", "ip", "tcp-udp", "any"):
-                                    proto_match = False
-
-                        if port_match and proto_match:
+                        if proto_match:
                             match = True
                             break
 
@@ -697,14 +723,17 @@ class CiscoIOSXEParserSVC:
                 ref_name = obj.get("name")
                 if ref_name:
                     sub_objects = self.get_object_group(ref_name)
-                    sub_matches = self.check_service(sub_objects, target_port=target_port, target_proto=target_proto)
+                    # Передаем уже сформированные parsed_targets в рекурсию
+                    sub_matches = self.check_service(
+                        sub_objects,
+                        _parsed_targets=parsed_targets
+                    )
                     if any(m[1] for m in sub_matches):
                         match = True
 
             result.append((obj["text"], match))
 
         return result
-
     def check_ip(self, objects, ip_query):
         """
         Подсветка IP / Сетей с поддержкой множественного поиска через запятую.
@@ -1065,28 +1094,46 @@ class CiscoFirepowerParserSVC:
 
         return objects
 
-    def check_service(self, objects, target_port=None, target_proto=None):
+    def check_service(self, objects, target_port=None, target_proto=None, _parsed_targets=None):
         """
-        Проверка сервисов FXOS
+        Проверка сервисов FXOS с изолированной фильтрацией по TCP/UDP для каждого порта.
         """
-        if not target_port:
+        if not target_port and not _parsed_targets:
             return [(obj.get("text", ""), False) for obj in objects]
 
-        raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+        # 1. Парсинг целей и строгая изоляция протоколов (только на верхнем вызове)
+        if _parsed_targets is None:
+            raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+            parsed_targets = []
 
-        parsed_targets = []
-        for item in raw_items:
-            item_proto = target_proto
-            port_str = item
+            # Нормализация дефолтного протокола
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
 
-            if "/" in item:
-                parts = item.split("/", 1)
-                item_proto = parts[0].lower().strip()
-                port_str = parts[1].strip()
+            for idx, item in enumerate(raw_items):
+                item_proto = None
+                port_str = item
 
-            resolved_p = self._resolve_port(port_str)
-            if resolved_p is not None:
-                parsed_targets.append((resolved_p, item_proto.lower() if item_proto else None))
+                # Если префикс "udp/6969" явно указан в элементе
+                if "/" in item:
+                    parts = item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                # Если слэша нет, но это первый элемент (idx == 0) и внешняя функция передала target_proto
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
+
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = self._resolve_port(port_str)
+                if resolved_p is not None:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
 
         if not parsed_targets:
             return [(obj.get("text", ""), False) for obj in objects]
@@ -1095,34 +1142,34 @@ class CiscoFirepowerParserSVC:
         for obj in objects:
             match = False
             obj_type = obj.get("type")
-            text_line = obj.get("text", "").lower()
 
             if obj_type == "service":
                 start_p = obj.get("start_port")
                 end_p = obj.get("end_port")
+                text_line = obj.get("text", "").lower()
                 obj_proto = str(obj.get("proto", "ip")).lower()
+
+                # Уточняем протокол напрямую из текста строки FXOS ("service-object tcp ...")
+                if "service-object tcp" in text_line or "port-object tcp" in text_line:
+                    obj_proto = "tcp"
+                elif "service-object udp" in text_line or "port-object udp" in text_line:
+                    obj_proto = "udp"
 
                 if start_p is not None and end_p is not None:
                     for target_p, req_proto in parsed_targets:
-                        # 1. Диапазон портов
-                        port_match = (start_p <= target_p <= end_p)
+                        # 1. Совпадение порта
+                        if not (start_p <= target_p <= end_p):
+                            continue
 
-                        # 2. Фильтрация протокола
+                        # 2. Согласование протокола
                         proto_match = True
-                        if req_proto in ("udp", "tcp"):
-                            if req_proto == "udp":
-                                if "tcp" in text_line and "tcp-udp" not in text_line and obj_proto == "tcp":
-                                    proto_match = False
-                                elif obj_proto not in ("udp", "ip", "tcp-udp", "any"):
-                                    proto_match = False
+                        if req_proto in ("tcp", "udp"):
+                            if obj_proto in ("tcp", "udp") and obj_proto != req_proto:
+                                proto_match = False
+                            elif obj_proto not in ("tcp", "udp", "ip", "tcp-udp", "any"):
+                                proto_match = False
 
-                            elif req_proto == "tcp":
-                                if "udp" in text_line and "tcp-udp" not in text_line and obj_proto == "udp":
-                                    proto_match = False
-                                elif obj_proto not in ("tcp", "ip", "tcp-udp", "any"):
-                                    proto_match = False
-
-                        if port_match and proto_match:
+                        if proto_match:
                             match = True
                             break
 
@@ -1130,14 +1177,17 @@ class CiscoFirepowerParserSVC:
                 ref_name = obj.get("name")
                 if ref_name:
                     sub_objects = self.get_object_group(ref_name)
-                    sub_matches = self.check_service(sub_objects, target_port=target_port, target_proto=target_proto)
+                    # Передаем уже сформированные и изолированные targets в рекурсивные вызовы
+                    sub_matches = self.check_service(
+                        sub_objects,
+                        _parsed_targets=parsed_targets
+                    )
                     if any(m[1] for m in sub_matches):
                         match = True
 
             result.append((obj.get("text", ""), match))
 
         return result
-
     def check_ip(self, objects, ip_query):
         """
         Подсветка IP с поддержкой поиска через запятую
@@ -1424,45 +1474,59 @@ class FortigateParserSVC:
             "name": group_name
         }]
 
-    def check_service(self, objects, target_query=None, target_proto=None):
-        if not target_query:
+    def check_service(self, objects, target_query=None, target_proto=None, _parsed_targets=None):
+        if not target_query and not _parsed_targets:
             return [(obj.get("text", ""), False) for obj in objects]
 
-        # 1. Разбиваем элементы (по запятым)
-        raw_elements = [q.strip() for q in str(target_query).split(",") if q.strip()]
+        # 1. Формируем распарсенный список целей и изолируем протоколы (только на верхнем вызове)
+        if _parsed_targets is None:
+            raw_elements = [q.strip() for q in str(target_query).split(",") if q.strip()]
 
-        exact_only_queries = []  # Только текстовый поиск 1:1
-        port_search_queries = []  # Поиск по именам + портам
+            exact_only_queries = []  # Только текстовый поиск 1:1
+            port_search_queries = []  # Поиск по именам + портам
 
-        for elem in raw_elements:
-            # Проверяем, был ли элемент передан в кавычках ("tcp-2598" или 'tcp-2598')
-            if (elem.startswith('"') and elem.endswith('"')) or (elem.startswith("'") and elem.endswith("'")):
-                exact_only_queries.append(elem.strip('\'"').lower())
-            else:
-                port_search_queries.append(elem.strip('\'"'))
+            for elem in raw_elements:
+                if (elem.startswith('"') and elem.endswith('"')) or (elem.startswith("'") and elem.endswith("'")):
+                    exact_only_queries.append(elem.strip('\'"').lower())
+                else:
+                    port_search_queries.append(elem.strip('\'"'))
 
-        # 2. Подготовка портов ТОЛЬКО для запросов БЕЗ кавычек
-        parsed_targets = []
-        for q_item in port_search_queries:
-            item_proto = target_proto
-            port_str = q_item
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
 
-            if "/" in q_item:
-                parts = q_item.split("/", 1)
-                item_proto = parts[0].lower().strip()
-                port_str = parts[1].strip()
+            parsed_targets = []
+            for idx, q_item in enumerate(port_search_queries):
+                item_proto = None
+                port_str = q_item
 
-            # Извлекаем порт только если порт_str - число или формат proto/port
-            resolved_p = None
-            if port_str.isdigit():
-                resolved_p = int(port_str)
-            else:
-                # Резервная проверка через _extract_port_num только для слэшей
+                # 1. Если явно передан слэш ("udp/2598")
                 if "/" in q_item:
-                    resolved_p = self._extract_port_num(port_str)
+                    parts = q_item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                # 2. Если слэша нет, то только первый элемент подхватывает внешнее значение target_proto
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
 
-            if resolved_p is not None and 1 <= resolved_p <= 65535:
-                parsed_targets.append((resolved_p, item_proto.lower() if item_proto else None))
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = None
+                if port_str.isdigit():
+                    resolved_p = int(port_str)
+                else:
+                    if "/" in q_item:
+                        resolved_p = self._extract_port_num(port_str)
+
+                if resolved_p is not None and 1 <= resolved_p <= 65535:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
+            exact_only_queries = []
+            port_search_queries = []
 
         result = []
 
@@ -1501,12 +1565,14 @@ class FortigateParserSVC:
                     udp_ranges = svc_info.get("udp_ranges", [])
 
                     for target_p, req_proto in parsed_targets:
+                        # Фильтрация по TCP
                         if req_proto in (None, "tcp", "ip", "any"):
                             for start_p, end_p in tcp_ranges:
                                 if start_p <= target_p <= end_p:
                                     is_match = True
                                     break
 
+                        # Фильтрация по UDP
                         if not is_match and req_proto in (None, "udp", "ip", "any"):
                             for start_p, end_p in udp_ranges:
                                 if start_p <= target_p <= end_p:
@@ -1515,6 +1581,20 @@ class FortigateParserSVC:
 
                         if is_match:
                             break
+
+            # --- ШАГ 3: Рекурсивная проверка для групп сервисов FortiGate ---
+            if not is_match and obj.get("type") == "service_object_ref":
+                ref_name = obj.get("name")
+                if ref_name and ref_name in self.all_services:
+                    svc = self.all_services[ref_name]
+                    if svc.get("type") == "service_group":
+                        sub_objects = self.get_object_group(ref_name)
+                        sub_matches = self.check_service(
+                            sub_objects,
+                            _parsed_targets=parsed_targets
+                        )
+                        if any(m[1] for m in sub_matches):
+                            is_match = True
 
             result.append((text_raw, is_match))
 
@@ -1804,49 +1884,62 @@ class CiscoNexusParserSVC:
 
         return objects
 
-    def check_service(self, objects, target_query=None, target_proto=None):
-        if not target_query:
+    def check_service(self, objects, target_query=None, target_proto=None, _parsed_targets=None):
+        if not target_query and not _parsed_targets:
             return [(obj.get("text", ""), False) for obj in objects]
 
-        # 1. Разбиваем запрос по запятым
-        raw_elements = [
-            q.strip() for q in str(target_query).split(",") if q.strip()
-        ]
+        # 1. Формируем распарсенный список целей и изолируем протоколы (только на верхнем вызове)
+        if _parsed_targets is None:
+            raw_elements = [
+                q.strip() for q in str(target_query).split(",") if q.strip()
+            ]
 
-        exact_only_queries = []
-        port_search_queries = []
+            exact_only_queries = []
+            port_search_queries = []
 
-        for elem in raw_elements:
-            # Если запрос в кавычках ("80", 'eq 80') -> выполняем строго 1 в 1
-            if (elem.startswith('"') and elem.endswith('"')) or (
-                elem.startswith("'") and elem.endswith("'")
-            ):
-                exact_only_queries.append(elem.strip("'\"").lower())
-            else:
-                port_search_queries.append(elem.strip("'\""))
+            for elem in raw_elements:
+                if (elem.startswith('"') and elem.endswith('"')) or (
+                        elem.startswith("'") and elem.endswith("'")
+                ):
+                    exact_only_queries.append(elem.strip("'\"").lower())
+                else:
+                    port_search_queries.append(elem.strip("'\""))
 
-        # 2. Подготовка целевых портов (для поиска без кавычек)
-        parsed_targets = []
-        for q_item in port_search_queries:
-            item_proto = target_proto
-            port_str = q_item
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
 
-            if "/" in q_item:
-                parts = q_item.split("/", 1)
-                item_proto = parts[0].lower().strip()
-                port_str = parts[1].strip()
+            parsed_targets = []
+            for idx, q_item in enumerate(port_search_queries):
+                item_proto = None
+                port_str = q_item
 
-            # Извлекаем порт только если порт_str - число или из PORT_MAP
-            resolved_p = None
-            if port_str.isdigit():
-                resolved_p = int(port_str)
-            else:
-                resolved_p = self._resolve_port(port_str)
+                # Префикс "udp/80" в самом элементе
+                if "/" in q_item:
+                    parts = q_item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                # Только первый элемент подхватывает внешнее значение target_proto
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
 
-            if resolved_p is not None and 1 <= resolved_p <= 65535:
-                parsed_targets.append(
-                    (resolved_p, item_proto.lower() if item_proto else None)
-                )
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = None
+                if port_str.isdigit():
+                    resolved_p = int(port_str)
+                else:
+                    resolved_p = self._resolve_port(port_str)
+
+                if resolved_p is not None and 1 <= resolved_p <= 65535:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
+            exact_only_queries = []
+            port_search_queries = []
 
         result = []
 
@@ -1854,7 +1947,7 @@ class CiscoNexusParserSVC:
             is_match = False
             text_raw = obj.get("text", "")
 
-            # Чистим строку от sequence number в начале (например "10 eq 80" -> "eq 80")
+            # Чистим строку от sequence number в начале (например, "10 eq 80" -> "eq 80")
             parts = text_raw.strip().split()
             if parts and parts[0].isdigit():
                 clean_text = " ".join(parts[1:]).lower()
@@ -1875,21 +1968,29 @@ class CiscoNexusParserSVC:
                         is_match = True
                         break
 
-            # --- ШАГ 2: Совпадение по диапазонам портов (eq / range / gt / lt) ---
+            # --- ШАГ 2: Совпадение по диапазонам портов и протоколу ---
             if not is_match and parsed_targets:
                 line_parts = clean_text.split()
+
+                # Извлекаем протокол из текста записи Cisco NX-OS (например, "eq tcp 80" или "tcp eq 80")
+                obj_proto = "ip"
+                if "tcp" in line_parts:
+                    obj_proto = "tcp"
+                elif "udp" in line_parts:
+                    obj_proto = "udp"
+
                 line_ranges = []
 
                 if "eq" in line_parts:
-                    idx = line_parts.index("eq")
-                    for p_str in line_parts[idx + 1 :]:
+                    idx_eq = line_parts.index("eq")
+                    for p_str in line_parts[idx_eq + 1:]:
                         p_num = self._resolve_port(p_str)
                         if p_num is not None:
                             line_ranges.append((p_num, p_num))
 
                 elif "range" in line_parts:
-                    idx = line_parts.index("range")
-                    r_args = line_parts[idx + 1 :]
+                    idx_r = line_parts.index("range")
+                    r_args = line_parts[idx_r + 1:]
                     if len(r_args) >= 2:
                         sp = self._resolve_port(r_args[0])
                         ep = self._resolve_port(r_args[1])
@@ -1897,32 +1998,49 @@ class CiscoNexusParserSVC:
                             line_ranges.append((sp, ep))
 
                 elif "gt" in line_parts:
-                    idx = line_parts.index("gt")
-                    if len(line_parts) > idx + 1:
-                        gt_p = self._resolve_port(line_parts[idx + 1])
+                    idx_gt = line_parts.index("gt")
+                    if len(line_parts) > idx_gt + 1:
+                        gt_p = self._resolve_port(line_parts[idx_gt + 1])
                         if gt_p:
                             line_ranges.append((gt_p + 1, 65535))
 
                 elif "lt" in line_parts:
-                    idx = line_parts.index("lt")
-                    if len(line_parts) > idx + 1:
-                        lt_p = self._resolve_port(line_parts[idx + 1])
+                    idx_lt = line_parts.index("lt")
+                    if len(line_parts) > idx_lt + 1:
+                        lt_p = self._resolve_port(line_parts[idx_lt + 1])
                         if lt_p:
                             line_ranges.append((1, lt_p - 1))
 
-                # Проверяем вхождение целевого порта в диапазон строки
+                # Проверяем вхождение целевого порта и соответствие протокола
                 for target_p, req_proto in parsed_targets:
-                    for start_p, end_p in line_ranges:
-                        if start_p <= target_p <= end_p:
-                            is_match = True
-                            break
-                    if is_match:
+                    # 1. Проверка порта
+                    port_match = any(start_p <= target_p <= end_p for start_p, end_p in line_ranges)
+
+                    # 2. Проверка протокола
+                    proto_match = True
+                    if req_proto in ("tcp", "udp"):
+                        if obj_proto in ("tcp", "udp") and obj_proto != req_proto:
+                            proto_match = False
+
+                    if port_match and proto_match:
+                        is_match = True
                         break
+
+            # --- ШАГ 3: Рекурсивный проход для групп ---
+            if not is_match and obj.get("type") == "service_group_ref":
+                ref_name = obj.get("name")
+                if ref_name:
+                    sub_objects = self.get_object_group(ref_name)
+                    sub_matches = self.check_service(
+                        sub_objects,
+                        _parsed_targets=parsed_targets
+                    )
+                    if any(m[1] for m in sub_matches):
+                        is_match = True
 
             result.append((text_raw, is_match))
 
         return result
-
     def check_ip(self, objects, ip):
         """Подсветка совпадений по IP (поддерживает список через запятую)."""
         if not ip:
@@ -3459,160 +3577,7 @@ class CiscoPIXParser:
             result.append((obj.get("text", ""), match))
 
         return result
-# class HuaweiVRPParser:
-#
-#     def __init__(self, config_text):
-#         self.config = config_text
-#         self.lines = config_text.splitlines()
-#         # Все address-set (object и group) для поддержки вложенности
-#         self.all_address_sets = self.parse_all_address_sets()
-#
-#     def parse_all_address_sets(self):
-#         """Парсим все ip address-set type object и type group"""
-#         address_sets = {}
-#         i = 0
-#         while i < len(self.lines):
-#             line = self.lines[i].strip()
-#
-#             if line.startswith("ip address-set ") and " type " in line:
-#                 # Пример: ip address-set netams type object
-#                 parts = line.split()
-#                 name = parts[2]
-#                 addr_type = parts[4]   # object или group
-#
-#                 members = []
-#                 i += 1
-#                 while i < len(self.lines):
-#                     curr_line = self.lines[i].strip()
-#                     if curr_line == "#" or curr_line.startswith("ip address-set ") or not curr_line:
-#                         break
-#                     if curr_line.startswith("address "):
-#                         members.append(curr_line)
-#                     i += 1
-#
-#                 address_sets[name] = {
-#                     "type": addr_type,
-#                     "members": members,
-#                     "text": line
-#                 }
-#                 continue
-#
-#             i += 1
-#         return address_sets
-#
-#     def _parse_member(self, member_line: str):
-#         """Разбирает одну строку address ..."""
-#         parts = member_line.split()
-#
-#         # address <seq> IP mask <mask>
-#         if len(parts) >= 5 and parts[1].isdigit() and parts[3] == "mask":
-#             ip = parts[2]
-#             mask = parts[4]
-#             try:
-#                 net = ipaddress.ip_network(f"{ip}/{mask}", strict=False)
-#                 return {
-#                     "text": member_line,
-#                     "type": "network" if int(mask) < 32 else "host",
-#                     "network": net
-#                 }
-#             except ValueError:
-#                 pass
-#
-#         # address <seq> range START END
-#         elif len(parts) >= 5 and parts[3] == "range":
-#             try:
-#                 start = ipaddress.ip_address(parts[4])
-#                 end = ipaddress.ip_address(parts[5])
-#                 return {
-#                     "text": member_line,
-#                     "type": "range",
-#                     "start": start,
-#                     "end": end
-#                 }
-#             except ValueError:
-#                 pass
-#
-#         return None
-#
-#     def _resolve_address_set(self, name, visited=None):
-#         """Рекурсивно раскрывает address-set (включая вложенные группы)"""
-#         if visited is None:
-#             visited = set()
-#         if name in visited:
-#             return []  # защита от циклов
-#         visited.add(name)
-#
-#         if name not in self.all_address_sets:
-#             return []
-#
-#         addr_set = self.all_address_sets[name]
-#         result = []
-#
-#         for member in addr_set.get("members", []):
-#             parsed = self._parse_member(member)
-#             if parsed:
-#                 result.append(parsed)
-#             else:
-#                 # Проверяем, не является ли это ссылкой на другой address-set
-#                 # В Huawei group может содержать: address X address-set NAME
-#                 if "address-set" in member:
-#                     try:
-#                         ref_name = member.split("address-set")[-1].strip().split()[0]
-#                         result.extend(self._resolve_address_set(ref_name, visited.copy()))
-#                     except:
-#                         pass
-#
-#         return result
-#
-#     def get_object_group(self, group_name):
-#         """Основной метод — возвращает раскрытые объекты"""
-#         if group_name not in self.all_address_sets:
-#             return []
-#
-#         addr_set = self.all_address_sets[group_name]
-#
-#         # Если это type object — просто парсим его членов
-#         if addr_set["type"] == "object":
-#             objects = []
-#             for member in addr_set["members"]:
-#                 parsed = self._parse_member(member)
-#                 if parsed:
-#                     objects.append(parsed)
-#             return objects
-#
-#         # Если это type group — рекурсивно раскрываем
-#         return self._resolve_address_set(group_name)
-#
-#     def check_ip(self, objects, ip):
-#         """Подсветка совпадений (совместимо со всеми остальными парсерами)"""
-#         if not ip:
-#             return [(obj.get("text", ""), False) for obj in objects]
-#
-#         try:
-#             target = ipaddress.ip_network(ip, strict=False)
-#         except ValueError:
-#             try:
-#                 target = ipaddress.ip_network(ip + "/32")
-#             except ValueError:
-#                 return [(obj.get("text", ""), False) for obj in objects]
-#
-#         result = []
-#         for obj in objects:
-#             match = False
-#             obj_type = obj.get("type")
-#
-#             if obj_type in ["host", "network"]:
-#                 if target.overlaps(obj.get("network")):
-#                     match = True
-#
-#             elif obj_type == "range":
-#                 if (obj["start"] <= target.network_address <= obj["end"] or
-#                         obj["start"] <= target.broadcast_address <= obj["end"]):
-#                     match = True
-#
-#             result.append((obj.get("text", ""), match))
-#
-#         return result
+
 class HuaweiVRPParser:
 
     def __init__(self, config_text):
@@ -4028,43 +3993,56 @@ class HuaweiVRPParserSVC:
             }
         ]
 
-    def check_service(self, objects, target_query=None, target_proto=None):
+    def check_service(self, objects, target_query=None, target_proto=None, _parsed_targets=None):
         """Подсветка совпадений по сервисам и портам Huawei VRP"""
-        if not target_query:
+        if not target_query and not _parsed_targets:
             return [(obj.get("text", ""), False) for obj in objects]
 
-        # 1. Разбиваем элементы (по запятым)
-        raw_elements = [
-            q.strip() for q in str(target_query).split(",") if q.strip()
-        ]
+        # 1. Формируем распарсенный список целей и изолируем протоколы (только на верхнем вызове)
+        if _parsed_targets is None:
+            raw_elements = [
+                q.strip() for q in str(target_query).split(",") if q.strip()
+            ]
 
-        exact_only_queries = []
-        port_search_queries = []
+            exact_only_queries = []
+            port_search_queries = []
 
-        for elem in raw_elements:
-            if (elem.startswith('"') and elem.endswith('"')) or (
-                    elem.startswith("'") and elem.endswith("'")
-            ):
-                exact_only_queries.append(elem.strip("'\"").lower())
-            else:
-                port_search_queries.append(elem.strip("'\""))
+            for elem in raw_elements:
+                if (elem.startswith('"') and elem.endswith('"')) or (
+                        elem.startswith("'") and elem.endswith("'")
+                ):
+                    exact_only_queries.append(elem.strip("'\"").lower())
+                else:
+                    port_search_queries.append(elem.strip("'\""))
 
-        # 2. Подготовка искомых портов (числа и преобразованные имена)
-        parsed_targets = []
-        for q_item in port_search_queries:
-            item_proto = target_proto
-            port_str = q_item
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
 
-            if "/" in q_item:
-                parts = q_item.split("/", 1)
-                item_proto = parts[0].lower().strip()
-                port_str = parts[1].strip()
+            parsed_targets = []
+            for idx, q_item in enumerate(port_search_queries):
+                item_proto = None
+                port_str = q_item
 
-            resolved_p = self._resolve_port(port_str)
-            if resolved_p is not None:
-                parsed_targets.append(
-                    (resolved_p, item_proto.lower() if item_proto else None)
-                )
+                if "/" in q_item:
+                    parts = q_item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
+
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = self._resolve_port(port_str)
+                if resolved_p is not None:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
+            exact_only_queries = []
+            port_search_queries = []
 
         result = []
 
@@ -4079,10 +4057,13 @@ class HuaweiVRPParserSVC:
                     is_match = True
                     break
 
-            # --- ШАГ 1Б: Совпадение БЕЗ кавычек (по тексту) ---
+            # --- ШАГ 1Б: Совпадение БЕЗ кавычек (только НЕЧИСЛОВЫЕ поисковые строки) ---
             if not is_match:
                 for q_norm in port_search_queries:
                     clean_q = q_norm.lower().strip()
+                    # Если запрос - чистое число, пропускаем ШАГ 1Б и отправляем на математическую проверку порта и протокола в ШАГ 2
+                    if clean_q.isdigit():
+                        continue
                     if clean_q == clean_text or clean_q in clean_text.split():
                         is_match = True
                         break
@@ -4092,50 +4073,50 @@ class HuaweiVRPParserSVC:
                 line_proto = None
                 if "protocol " in clean_text:
                     try:
-                        line_proto = clean_text.split("protocol ")[1].split()[0]
+                        line_proto = clean_text.split("protocol ")[1].split()[0].lower()
                     except IndexError:
                         pass
 
                 line_ranges = []
 
-                # 2.1 Явное указание destination-port (для type object)
+                # 2.1 Явное указание destination-port
                 if "destination-port " in clean_text:
                     try:
-                        dest_part = clean_text.split("destination-port ")[
-                            1
-                        ].strip()
+                        dest_part = clean_text.split("destination-port ")[1].strip()
                         tokens = dest_part.split()
 
-                        if "to" in tokens:
-                            to_idx = tokens.index("to")
-                            sp = self._resolve_port(tokens[to_idx - 1])
-                            ep = self._resolve_port(tokens[to_idx + 1])
-                            if sp and ep:
-                                line_ranges.append((sp, ep))
-                        else:
-                            for tok in tokens:
-                                p_num = self._resolve_port(tok)
+                        # Обработка вариантов формата "13723 to 13724" или нескольких портов
+                        i = 0
+                        while i < len(tokens):
+                            if i + 2 < len(tokens) and tokens[i + 1] == "to":
+                                sp = self._resolve_port(tokens[i])
+                                ep = self._resolve_port(tokens[i + 2])
+                                if sp and ep:
+                                    line_ranges.append((sp, ep))
+                                i += 3
+                            else:
+                                p_num = self._resolve_port(tokens[i])
                                 if p_num is not None:
                                     line_ranges.append((p_num, p_num))
-                                else:
-                                    break
+                                i += 1
                     except Exception:
                         pass
 
-                # 2.2 Неявное имя сервиса в строке (для type group, например "service ssh" или "service-set ftp")
+                # 2.2 Неявное имя сервиса в строке
                 else:
                     for token in clean_text.split():
                         p_from_map = self.PORT_MAP.get(token)
                         if p_from_map is not None:
                             line_ranges.append((p_from_map, p_from_map))
 
-                # Проверяем вхождение целевого порта в диапазоны/значения строки
+                # Проверяем вхождение целевого порта в диапазоны и СТРОГОЕ совпадение протокола
                 for target_p, req_proto in parsed_targets:
-                    if (
-                            req_proto
-                            and line_proto
-                            and req_proto not in (line_proto, "any", "ip")
-                    ):
+                    proto_match = True
+                    if req_proto in ("tcp", "udp"):
+                        if line_proto in ("tcp", "udp") and line_proto != req_proto:
+                            proto_match = False
+
+                    if not proto_match:
                         continue
 
                     for start_p, end_p in line_ranges:
@@ -4144,6 +4125,20 @@ class HuaweiVRPParserSVC:
                             break
                     if is_match:
                         break
+
+            # --- ШАГ 3: Рекурсивный проход для групп Huawei ---
+            if not is_match and obj.get("type") == "service_object_ref":
+                ref_name = obj.get("name")
+                if ref_name and ref_name in self.all_service_sets:
+                    svc_set = self.all_service_sets[ref_name]
+                    if svc_set.get("type") == "group":
+                        sub_objects = self.get_object_group(ref_name)
+                        sub_matches = self.check_service(
+                            sub_objects,
+                            _parsed_targets=parsed_targets
+                        )
+                        if any(m[1] for m in sub_matches):
+                            is_match = True
 
             result.append((text_raw, is_match))
 
@@ -4194,415 +4189,6 @@ class HuaweiVRPParserSVC:
             result.append((obj.get("text", ""), match))
 
         return result
-
-import ipaddress
-import re
-
-
-# class CiscoPIXParserSVC:
-#
-#     # Встроенная таблица соответствия имен сервисов Cisco PIX/ASA
-#     PORT_MAP = {
-#         'www': 80,
-#         'http': 80,
-#         'https': 443,
-#         'domain': 53,
-#         'dns': 53,
-#         'ssh': 22,
-#         'telnet': 23,
-#         'smtp': 25,
-#         'snmp': 161,
-#         'snmptrap': 162,
-#         'ntp': 123,
-#         'syslog': 514,
-#         'kerberos': 88,
-#         'ldap': 389,
-#         'ldaps': 636,
-#         'bgp': 179,
-#         'sip': 5060,
-#         'ftp': 21,
-#         'ftp-data': 20,
-#     }
-#
-#     def __init__(self, config_text):
-#         self.config = config_text.replace("\r\n", "\n")
-#         self.lines = self.config.splitlines()
-#         self.object_networks = self.parse_all_object_networks()
-#         self.all_service_groups = self.parse_all_service_groups()
-#
-#     def _resolve_port(self, val_str):
-#         """Преобразует строку в порт (число или имя из таблицы Cisco)."""
-#         val_clean = str(val_str).strip().lower()
-#         if val_clean.isdigit():
-#             p = int(val_clean)
-#             return p if 1 <= p <= 65535 else None
-#         return self.PORT_MAP.get(val_clean)
-#
-#     def parse_all_object_networks(self):
-#         """Парсим object network (аналогично ASA)"""
-#         objects = {}
-#         i = 0
-#         while i < len(self.lines):
-#             line = self.lines[i].strip()
-#             if line.startswith("object network"):
-#                 parts = line.split()
-#                 if len(parts) >= 3:
-#                     name = parts[2]
-#                     if i + 1 < len(self.lines):
-#                         next_line = self.lines[i + 1].strip()
-#                         if next_line.startswith("range"):
-#                             p = next_line.split()
-#                             start = ipaddress.ip_address(p[1])
-#                             end = ipaddress.ip_address(p[2])
-#                             objects[name] = {
-#                                 "type": "range",
-#                                 "start": start,
-#                                 "end": end,
-#                                 "text": next_line,
-#                             }
-#                             i += 1
-#                         elif next_line.startswith("host"):
-#                             ip = next_line.split()[1]
-#                             objects[name] = {
-#                                 "type": "host",
-#                                 "network": ipaddress.ip_network(ip + "/32"),
-#                                 "text": next_line,
-#                             }
-#                             i += 1
-#                         else:
-#                             objects[name] = {"type": "object", "text": line}
-#                     else:
-#                         objects[name] = {"type": "object", "text": line}
-#             i += 1
-#         return objects
-#
-#     def parse_all_service_groups(self):
-#         """Парсит все object-group service NAME [tcp|udp|ip]"""
-#         groups = {}
-#         i = 0
-#         while i < len(self.lines):
-#             line = self.lines[i].strip()
-#
-#             if line.startswith("object-group service "):
-#                 parts = line.split()
-#                 group_name = parts[2]
-#
-#                 # Если протокол указан прямо в названии группы (object-group service NAME tcp)
-#                 header_proto = parts[3].lower() if len(parts) >= 4 else None
-#
-#                 members = []
-#                 i += 1
-#                 while i < len(self.lines):
-#                     curr = self.lines[i].strip()
-#                     # Конец блока группы
-#                     if (
-#                         not curr
-#                         or not self.lines[i].startswith(" ")
-#                         or curr.startswith("object-group")
-#                     ):
-#                         break
-#
-#                     # Пропускаем комментарии
-#                     if curr.startswith("description "):
-#                         i += 1
-#                         continue
-#
-#                     members.append(curr)
-#                     i += 1
-#
-#                 groups[group_name] = {
-#                     "header_proto": header_proto,
-#                     "members": members,
-#                     "text": line,
-#                 }
-#                 continue
-#
-#             i += 1
-#         return groups
-#
-#     def get_object_group(self, group_name):
-#         """Возвращает содержимое сетевых или сервисных групп"""
-#         # 1. Сначала ищем среди object-group network
-#         group_start = None
-#         for i, line in enumerate(self.lines):
-#             if line.strip() == f"object-group network {group_name}":
-#                 group_start = i
-#                 break
-#
-#         if group_start is not None:
-#             objects = []
-#             for line in self.lines[group_start + 1 :]:
-#                 if not line.startswith(" "):
-#                     break
-#                 line_stripped = line.strip()
-#                 if not line_stripped:
-#                     continue
-#
-#                 parts = line_stripped.split()
-#
-#                 if line_stripped.startswith("network-object") and len(parts) >= 3:
-#                     ip = parts[1]
-#                     mask = parts[2]
-#                     try:
-#                         net = ipaddress.ip_network(f"{ip}/{mask}", strict=False)
-#                         objects.append({
-#                             "text": line_stripped,
-#                             "type": "network",
-#                             "network": net,
-#                         })
-#                     except ValueError:
-#                         pass
-#
-#                 elif line_stripped.startswith("network-object host") and len(parts) >= 3:
-#                     ip = parts[2]
-#                     objects.append({
-#                         "text": line_stripped,
-#                         "type": "host",
-#                         "network": ipaddress.ip_network(ip + "/32"),
-#                     })
-#
-#                 elif len(parts) >= 3 and parts[1] == "object":
-#                     objects.append({
-#                         "text": line_stripped,
-#                         "type": "object_ref",
-#                         "name": parts[2],
-#                     })
-#             return objects
-#
-#         # 2. Поиск по одиночной object network
-#         if group_name in self.object_networks:
-#             obj = self.object_networks[group_name]
-#             d = {"text": obj.get("text", ""), "type": obj["type"]}
-#             if "network" in obj:
-#                 d["network"] = obj["network"]
-#             if "start" in obj and "end" in obj:
-#                 d["start"] = obj["start"]
-#                 d["end"] = obj["end"]
-#             return [d]
-#
-#         # 3. Поиск по object-group service
-#         if group_name in self.all_service_groups:
-#             grp = self.all_service_groups[group_name]
-#             objects = []
-#             for member_text in grp.get("members", []):
-#                 objects.append({
-#                     "text": member_text,
-#                     "type": "service_object_ref",
-#                     "name": member_text,
-#                     "header_proto": grp.get("header_proto"),
-#                 })
-#             return objects
-#
-#         return [
-#             {
-#                 "text": f"object-group {group_name}",
-#                 "type": "service_object_ref",
-#                 "name": group_name,
-#             }
-#         ]
-#
-#     def check_service(self, objects, target_query=None, target_proto=None):
-#         """Подсветка совпадений по сервисам и портам Cisco PIX/ASA"""
-#         if not target_query:
-#             return [(obj.get("text", ""), False) for obj in objects]
-#
-#         # 1. Разбиваем запрос по запятым
-#         raw_elements = [
-#             q.strip() for q in str(target_query).split(",") if q.strip()
-#         ]
-#
-#         exact_only_queries = []
-#         port_search_queries = []
-#
-#         for elem in raw_elements:
-#             if (elem.startswith('"') and elem.endswith('"')) or (
-#                 elem.startswith("'") and elem.endswith("'")
-#             ):
-#                 exact_only_queries.append(elem.strip("'\"").lower())
-#             else:
-#                 port_search_queries.append(elem.strip("'\""))
-#
-#         # 2. Подготовка искомых портов
-#         parsed_targets = []
-#         for q_item in port_search_queries:
-#             item_proto = target_proto
-#             port_str = q_item
-#
-#             if "/" in q_item:
-#                 parts = q_item.split("/", 1)
-#                 item_proto = parts[0].lower().strip()
-#                 port_str = parts[1].strip()
-#
-#             resolved_p = self._resolve_port(port_str)
-#             if resolved_p is not None:
-#                 parsed_targets.append(
-#                     (resolved_p, item_proto.lower() if item_proto else None)
-#                 )
-#
-#         result = []
-#
-#         for obj in objects:
-#             is_match = False
-#             text_raw = obj.get("text", "")
-#             clean_text = text_raw.lower().strip()
-#             header_proto = obj.get("header_proto")
-#
-#             # --- ШАГ 1А: Запрос В КАВЫЧКАХ (строгое совпадение) ---
-#             for q_exact in exact_only_queries:
-#                 if q_exact == clean_text or q_exact in clean_text.split():
-#                     is_match = True
-#                     break
-#
-#             # --- ШАГ 1Б: Запрос БЕЗ кавычек (текстовое совпадение) ---
-#             if not is_match:
-#                 for q_norm in port_search_queries:
-#                     clean_q = q_norm.lower().strip()
-#                     if clean_q == clean_text or clean_q in clean_text.split():
-#                         is_match = True
-#                         break
-#
-#             # --- ШАГ 2: Сопоставление портов и протоколов ---
-#             if not is_match and parsed_targets:
-#                 line_proto = header_proto
-#                 tokens = clean_text.split()
-#
-#                 # Выделяем протокол из самой строки, если он там есть (например service-object tcp/udp/ip/tcp-udp)
-#                 if tokens and tokens[0] == "service-object" and len(tokens) >= 2:
-#                     line_proto = tokens[1]
-#
-#                 line_ranges = []
-#
-#                 # Извлекаем порты (поддерживаем eq, range, gt, lt)
-#                 if "eq" in tokens:
-#                     idx = tokens.index("eq")
-#                     for tok in tokens[idx + 1 :]:
-#                         p_num = self._resolve_port(tok)
-#                         if p_num is not None:
-#                             line_ranges.append((p_num, p_num))
-#                         else:
-#                             break
-#
-#                 elif "range" in tokens:
-#                     idx = tokens.index("range")
-#                     if len(tokens) >= idx + 3:
-#                         sp = self._resolve_port(tokens[idx + 1])
-#                         ep = self._resolve_port(tokens[idx + 2])
-#                         if sp and ep:
-#                             line_ranges.append((sp, ep))
-#
-#                 elif "gt" in tokens:
-#                     idx = tokens.index("gt")
-#                     if len(tokens) >= idx + 2:
-#                         gt_p = self._resolve_port(tokens[idx + 1])
-#                         if gt_p:
-#                             line_ranges.append((gt_p + 1, 65535))
-#
-#                 elif "lt" in tokens:
-#                     idx = tokens.index("lt")
-#                     if len(tokens) >= idx + 2:
-#                         lt_p = self._resolve_port(tokens[idx + 1])
-#                         if lt_p:
-#                             line_ranges.append((1, lt_p - 1))
-#
-#                 # Если порты не были найдены через eq/range, но в строке есть имена (например, "service-object tcp-udp eq www")
-#                 else:
-#                     for tok in tokens:
-#                         p_from_map = self.PORT_MAP.get(tok)
-#                         if p_from_map is not None:
-#                             line_ranges.append((p_from_map, p_from_map))
-#
-#                 # Проверяем вхождение
-#                 for target_p, req_proto in parsed_targets:
-#                     # Проверка совпадения протокола
-#                     if req_proto and line_proto:
-#                         # 'tcp-udp' в Cisco PIX подходит и к TCP, и к UDP
-#                         if line_proto != "tcp-udp" and req_proto not in (
-#                             line_proto,
-#                             "any",
-#                             "ip",
-#                         ):
-#                             continue
-#
-#                     for start_p, end_p in line_ranges:
-#                         if start_p <= target_p <= end_p:
-#                             is_match = True
-#                             break
-#                     if is_match:
-#                         break
-#
-#             result.append((text_raw, is_match))
-#
-#         return result
-#
-#     def check_ip(self, objects, ip):
-#         """Подсветка совпадений по IP (с поддержкой списка через запятую)"""
-#         if not ip:
-#             return [(obj.get("text", ""), False) for obj in objects]
-#
-#         raw_targets = [t.strip() for t in str(ip).split(",") if t.strip()]
-#         parsed_targets = []
-#
-#         for target_str in raw_targets:
-#             try:
-#                 parsed_targets.append(
-#                     ipaddress.ip_network(target_str, strict=False)
-#                 )
-#             except ValueError:
-#                 try:
-#                     parsed_targets.append(
-#                         ipaddress.ip_network(target_str + "/32")
-#                     )
-#                 except ValueError:
-#                     pass
-#
-#         if not parsed_targets:
-#             return [(obj.get("text", ""), False) for obj in objects]
-#
-#         result = []
-#         for obj in objects:
-#             match = False
-#
-#             if obj.get("type") in ["host", "network"]:
-#                 for target_net in parsed_targets:
-#                     if target_net.overlaps(obj.get("network")):
-#                         match = True
-#                         break
-#
-#             elif obj.get("type") == "range":
-#                 for target_net in parsed_targets:
-#                     if (
-#                         obj["start"] <= target_net.network_address <= obj["end"]
-#                         or obj["start"]
-#                         <= target_net.broadcast_address
-#                         <= obj["end"]
-#                     ):
-#                         match = True
-#                         break
-#
-#             elif obj.get("type") == "object_ref":
-#                 name = obj.get("name")
-#                 if name in self.object_networks:
-#                     ref = self.object_networks[name]
-#                     for target_net in parsed_targets:
-#                         if ref["type"] == "range":
-#                             if (
-#                                 ref["start"]
-#                                 <= target_net.network_address
-#                                 <= ref["end"]
-#                                 or ref["start"]
-#                                 <= target_net.broadcast_address
-#                                 <= ref["end"]
-#                             ):
-#                                 match = True
-#                                 break
-#                         elif ref.get("type") in ["host", "network"]:
-#                             if target_net.overlaps(ref.get("network")):
-#                                 match = True
-#                                 break
-#
-#             result.append((obj.get("text", ""), match))
-#
-#         return result
 
 class CiscoPIXParserSVC:
 
@@ -4863,40 +4449,59 @@ class CiscoPIXParserSVC:
         # Не найдено ничего
         return None
 
-    def check_service(self, objects, target_query=None, target_proto=None):
-        if not objects or not target_query:
+    def check_service(self, objects, target_query=None, target_proto=None, _parsed_targets=None):
+        if not objects and not _parsed_targets:
+            return []
+        if not target_query and not _parsed_targets:
             return [(obj.get("text", ""), False) for obj in (objects or [])]
 
-        raw_elements = [
-            q.strip() for q in str(target_query).split(",") if q.strip()
-        ]
+        # 1. Формируем распарсенный список целей и изолируем протоколы (только на верхнем вызове)
+        if _parsed_targets is None:
+            raw_elements = [
+                q.strip() for q in str(target_query).split(",") if q.strip()
+            ]
 
-        exact_only_queries = []
-        port_search_queries = []
+            exact_only_queries = []
+            port_search_queries = []
 
-        for elem in raw_elements:
-            if (elem.startswith('"') and elem.endswith('"')) or (
-                elem.startswith("'") and elem.endswith("'")
-            ):
-                exact_only_queries.append(elem.strip("'\"").lower())
-            else:
-                port_search_queries.append(elem.strip("'\""))
+            for elem in raw_elements:
+                if (elem.startswith('"') and elem.endswith('"')) or (
+                        elem.startswith("'") and elem.endswith("'")
+                ):
+                    exact_only_queries.append(elem.strip("'\"").lower())
+                else:
+                    port_search_queries.append(elem.strip("'\""))
 
-        parsed_targets = []
-        for q_item in port_search_queries:
-            item_proto = target_proto
-            port_str = q_item
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
 
-            if "/" in q_item:
-                parts = q_item.split("/", 1)
-                item_proto = parts[0].lower().strip()
-                port_str = parts[1].strip()
+            parsed_targets = []
+            for idx, q_item in enumerate(port_search_queries):
+                item_proto = None
+                port_str = q_item
 
-            resolved_p = self._resolve_port(port_str)
-            if resolved_p is not None:
-                parsed_targets.append(
-                    (resolved_p, item_proto.lower() if item_proto else None)
-                )
+                # Префикс "udp/8080" явно указан в самом элементе
+                if "/" in q_item:
+                    parts = q_item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                # Только первый элемент (idx == 0) подхватывает внешнее значение target_proto
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
+
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = self._resolve_port(port_str)
+                if resolved_p is not None:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
+            exact_only_queries = []
+            port_search_queries = []
 
         result = []
 
@@ -4906,11 +4511,13 @@ class CiscoPIXParserSVC:
             clean_text = text_raw.lower().strip()
             header_proto = obj.get("header_proto")
 
+            # --- ШАГ 1А: Запрос В КАВЫЧКАХ ---
             for q_exact in exact_only_queries:
                 if q_exact == clean_text or q_exact in clean_text.split():
                     is_match = True
                     break
 
+            # --- ШАГ 1Б: Запрос БЕЗ кавычек (по тексту) ---
             if not is_match:
                 for q_norm in port_search_queries:
                     clean_q = q_norm.lower().strip()
@@ -4918,18 +4525,22 @@ class CiscoPIXParserSVC:
                         is_match = True
                         break
 
+            # --- ШАГ 2: Сопоставление портов и протоколов ---
             if not is_match and parsed_targets:
                 line_proto = header_proto
                 tokens = clean_text.split()
 
                 if tokens and tokens[0] == "service-object" and len(tokens) >= 2:
                     line_proto = tokens[1]
+                elif tokens and tokens[0] == "port-object" and len(tokens) >= 2:
+                    if header_proto:
+                        line_proto = header_proto
 
                 line_ranges = []
 
                 if "eq" in tokens:
                     idx = tokens.index("eq")
-                    for tok in tokens[idx + 1 :]:
+                    for tok in tokens[idx + 1:]:
                         p_num = self._resolve_port(tok)
                         if p_num is not None:
                             line_ranges.append((p_num, p_num))
@@ -4964,14 +4575,15 @@ class CiscoPIXParserSVC:
                         if p_from_map is not None:
                             line_ranges.append((p_from_map, p_from_map))
 
+                # Проверяем совпадение порта и протокола
                 for target_p, req_proto in parsed_targets:
-                    if req_proto and line_proto:
-                        if line_proto != "tcp-udp" and req_proto not in (
-                            line_proto,
-                            "any",
-                            "ip",
-                        ):
-                            continue
+                    proto_match = True
+                    if req_proto in ("tcp", "udp"):
+                        if line_proto in ("tcp", "udp") and line_proto != req_proto:
+                            proto_match = False
+
+                    if not proto_match:
+                        continue
 
                     for start_p, end_p in line_ranges:
                         if start_p <= target_p <= end_p:
@@ -4980,10 +4592,22 @@ class CiscoPIXParserSVC:
                     if is_match:
                         break
 
+            # --- ШАГ 3: Рекурсивный проход по группам ---
+            if not is_match and obj.get("type") == "service_group_ref":
+                ref_name = obj.get("name")
+                if ref_name:
+                    sub_objects = self.get_object_group(ref_name)
+                    if sub_objects:
+                        sub_matches = self.check_service(
+                            sub_objects,
+                            _parsed_targets=parsed_targets
+                        )
+                        if any(m[1] for m in sub_matches):
+                            is_match = True
+
             result.append((text_raw, is_match))
 
         return result
-
     def check_ip(self, objects, ip):
         if not objects or not ip:
             return [(obj.get("text", ""), False) for obj in (objects or [])]
@@ -5053,15 +4677,11 @@ class CiscoPIXParserSVC:
 
         return result
 
-import ipaddress
-from collections import defaultdict
-
-
 class EltexObjectGroupParserSVC:
     def __init__(self, config_text: str):
         self.config_lines = config_text.splitlines()
-        self.network_groups = defaultdict(list)  # {group_name: [{'text': ..., 'network': ...}, ...]}
-        self.service_groups = defaultdict(list)  # {group_name: [{'text': ..., 'start': ..., 'end': ...}, ...]}
+        self.network_groups = defaultdict(list)
+        self.service_groups = defaultdict(list)
         self._parse()
 
     def _parse(self):
@@ -5099,7 +4719,7 @@ class EltexObjectGroupParserSVC:
                     try:
                         net = ipaddress.ip_network(raw_net, strict=False)
                         self.network_groups[current_group_name].append({
-                            "text": raw_net,
+                            "text": line_str,  # Сохраняем "ip prefix 10.36.169.0/24"
                             "type": "network" if net.prefixlen != 32 else "host",
                             "network": net
                         })
@@ -5115,7 +4735,7 @@ class EltexObjectGroupParserSVC:
                         start_str, end_str = raw_port.split("-", 1)
                         if start_str.isdigit() and end_str.isdigit():
                             self.service_groups[current_group_name].append({
-                                "text": raw_port,
+                                "text": line_str,  # Сохраняем "port-range 50001-50005"
                                 "type": "port_range",
                                 "start": int(start_str),
                                 "end": int(end_str)
@@ -5124,31 +4744,112 @@ class EltexObjectGroupParserSVC:
                         if raw_port.isdigit():
                             port = int(raw_port)
                             self.service_groups[current_group_name].append({
-                                "text": raw_port,
+                                "text": line_str,  # Сохраняем "port-range 80"
                                 "type": "port",
                                 "start": port,
                                 "end": port
                             })
 
     def get_object_group(self, group_name: str):
-        """
-        Возвращает содержимое object-group (network или service) в виде списка словарей.
-        Если группа не найдена — возвращает None.
-        """
-        # 1. Поиск среди network groups
         if group_name in self.network_groups:
             return self.network_groups[group_name]
 
-        # 2. Поиск среди service groups
         if group_name in self.service_groups:
             return self.service_groups[group_name]
 
         return None
 
+    def check_service(self, objects, target_query=None, target_proto=None, _parsed_targets=None):
+        if not objects and not _parsed_targets:
+            return []
+        if not target_query and not _parsed_targets:
+            return [(obj.get("text", ""), False) for obj in (objects or [])]
+
+        if _parsed_targets is None:
+            raw_elements = [
+                q.strip() for q in str(target_query).split(",") if q.strip()
+            ]
+
+            exact_only_queries = []
+            port_search_queries = []
+
+            for elem in raw_elements:
+                if (elem.startswith('"') and elem.endswith('"')) or (
+                    elem.startswith("'") and elem.endswith("'")
+                ):
+                    exact_only_queries.append(elem.strip("'\"").lower())
+                else:
+                    port_search_queries.append(elem.strip("'\""))
+
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
+
+            parsed_targets = []
+            for idx, q_item in enumerate(port_search_queries):
+                item_proto = None
+                port_str = q_item
+
+                if "/" in q_item:
+                    parts = q_item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
+
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = None
+                if port_str.isdigit():
+                    resolved_p = int(port_str)
+
+                if resolved_p is not None and 1 <= resolved_p <= 65535:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
+            exact_only_queries = []
+            port_search_queries = []
+
+        result = []
+
+        for obj in objects:
+            is_match = False
+            text_raw = str(obj.get("text", "")).strip()
+            clean_text = text_raw.lower()
+
+            # 1А. Запрос в кавычках (точный поиск)
+            for q_exact in exact_only_queries:
+                if q_exact == clean_text or q_exact in clean_text.split():
+                    is_match = True
+                    break
+
+            # 1Б. Запрос без кавычек (попадание подстроки/токена)
+            if not is_match:
+                for q_norm in port_search_queries:
+                    clean_q = q_norm.lower().strip()
+                    if clean_q == clean_text or clean_q in clean_text.split():
+                        is_match = True
+                        break
+
+            # 2. Проверка числовых диапазонов портов
+            if not is_match and parsed_targets:
+                start_p = obj.get("start")
+                end_p = obj.get("end")
+
+                if start_p is not None and end_p is not None:
+                    for target_p, req_proto in parsed_targets:
+                        if start_p <= target_p <= end_p:
+                            is_match = True
+                            break
+
+            result.append((text_raw, is_match))
+
+        return result
+
     def check_ip(self, objects, target_ip):
-        """
-        Вспомогательный метод для проверки совпадений по IP с результатами get_object_group.
-        """
         if not objects or not target_ip:
             return [(obj.get("text", ""), False) for obj in (objects or [])]
 

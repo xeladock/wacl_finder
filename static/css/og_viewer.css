@@ -238,8 +238,9 @@ scrollbar-width: none !important; /* Firefox */
     font-family: monospace;
     font-size: 0.95rem;
     border-radius: 8px;
-    overflow: auto;
+    overflow: visible;
     white-space: pre;
+    width: max-content;
 }
 
 .top-card {

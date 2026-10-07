@@ -232,7 +232,6 @@ class BaseACLParser:
                     matches.append(f" {rule}")
         return tuple(matches)
 
-
 class CiscoIOSXEParser2:
     def __init__(self, config_text):
         self.config_lines = config_text.splitlines()
@@ -293,9 +292,9 @@ class CiscoIOSXEParser2:
         return None
 
     def _matches(self, input_str, candidates, strict_mode, is_standard_acl=False, ignore_any=False, mask_limit=None):
-        ANY_VARIANTS = ("any", "any4", "all", "0.0.0.0/0")
+        ANY_VARIANTS = ("any", "any4", "0.0.0.0/0")
 
-        # 1. СТРОГАЯ ПРОВЕРКА IGNORE_ANY (Самая первая!)
+        # 1. СТРОГАЯ ПРОВЕРКА IGNORE_ANY
         is_any_in_candidates = any(c in ANY_VARIANTS for c in candidates)
         if ignore_any and is_any_in_candidates:
             return False
@@ -342,7 +341,6 @@ class CiscoIOSXEParser2:
             except ValueError:
                 return False
 
-        # При поиске по СЕТИ принудительно strict_mode = True
         effective_strict_mode = strict_mode or is_search_network
 
         # 5. Проверка кандидатов
@@ -356,16 +354,16 @@ class CiscoIOSXEParser2:
 
             cand_net = self._cand_to_net(cand)
 
-            # Проверка лимита маски
+            # Проверка лимита маски (ИСПРАВЛЕНО: отбраковываем сети с префиксом > limit)
             if parsed_mask_limit is not None:
                 if cand_net is not None:
-                    if cand_net.prefixlen < parsed_mask_limit:
+                    if cand_net.prefixlen > parsed_mask_limit:
                         continue
                 elif isinstance(cand, tuple) and len(cand) == 2:
                     start, end = cand
                     range_size = int(end) - int(start) + 1
                     min_allowed_size = 2 ** (32 - parsed_mask_limit)
-                    if range_size > min_allowed_size:
+                    if range_size < min_allowed_size:
                         continue
 
             # --- СТРОГИЙ РЕЖИМ ---
@@ -402,12 +400,9 @@ class CiscoIOSXEParser2:
             i += 1
         if i < len(parts) and parts[i] in ['permit', 'deny']:
             i += 1
-        if i < len(parts) and parts[i] == 'ipv4':  # Handle IOS XR
-            i += 1
 
         KNOWN_PROTOCOLS = {
-            'ip', 'tcp', 'udp', 'icmp', 'igmp', 'ipinip', 'gre',
-            'esp', 'ah', 'eigrp', 'ospf', 'nos', 'pim', 'pcp'
+            'ip', 'ipv4', 'tcp', 'udp', 'icmp'
         }
 
         if acl_type == 'extended' and i < len(parts):
@@ -445,13 +440,14 @@ class CiscoIOSXEParser2:
         if acl_type == 'standard':
             return src, "any"
 
-        while i < len(parts) and parts[i] in ['eq', 'range', 'gt', 'lt', 'established', 'log']:
-            i += 2 if parts[i] in ['eq', 'gt', 'lt', 'log', 'established'] else 3
+        while i < len(parts) and parts[i] in ['eq', 'range', 'gt', 'lt', 'established', 'log', 'nexthop1', 'vrf']:
+            # Пропускаем параметры портов и опций XR (nexthop1/vrf/и т.д.)
+            if parts[i] in ['nexthop1', 'vrf']:
+                i += 2
+            else:
+                i += 2 if parts[i] in ['eq', 'gt', 'lt', 'log', 'established'] else 3
 
         dst, i = parse_entry(i)
-        while i < len(parts) and parts[i] in ['eq', 'range', 'gt', 'lt', 'established', 'log']:
-            i += 2 if parts[i] in ['eq', 'gt', 'lt', 'log', 'established'] else 3
-
         return src, dst
 
     def _resolve_entry(self, entry):
@@ -657,40 +653,6 @@ class CiscoIOSXEParser2:
                 continue
         return tuple(matches)
 
-    @classmethod
-    def from_local_file(
-            cls,
-            filename,
-            src_ip,
-            dst_ip,
-            strict_mode=False,
-            ignore_src_any=False,
-            ignore_dst_any=False,
-            src_mask_limit=None,
-            dst_mask_limit=None,
-            base_dir=base_dir,
-            encoding="utf-8"
-    ):
-        for root, _, files in os.walk(base_dir):
-            for file in files:
-                if file == filename:
-                    full_path = os.path.join(root, file)
-                    try:
-                        with open(full_path, "r", encoding=encoding, errors="ignore") as f:
-                            config_text = f.read()
-                    except Exception:
-                        continue
-                    parser = cls(config_text)
-                    return parser.find_acl_matches(
-                        src_ip,
-                        dst_ip,
-                        strict_mode=strict_mode,
-                        ignore_src_any=ignore_src_any,
-                        ignore_dst_any=ignore_dst_any,
-                        src_mask_limit=src_mask_limit,
-                        dst_mask_limit=dst_mask_limit
-                    )
-        return tuple()
 
 
 class CiscoIOSParser3:
@@ -925,7 +887,7 @@ class CiscoIOSParser3:
         if i < len(parts) and parts[i] in ['permit', 'deny']:
             i += 1
 
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp', 'igmp', 'ipinip', 'gre', 'esp', 'ah', 'eigrp', 'ospf', 'pim'}
+        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
@@ -967,7 +929,7 @@ class CiscoIOSParser3:
             return self.object_groups[entry]
         return []
 
-    def find_acl_matches(
+    def find_matches(
             self,
             src_ip=None,
             dst_ip=None,
@@ -1026,51 +988,51 @@ class CiscoIOSParser3:
                     matches.append(f"  {rule}")
         return tuple(matches)
 
-    find_matches = find_acl_matches
+    # find_matches = find_acl_matches
 
-    @classmethod
-    def from_local_file(
-            cls,
-            filename,
-            src_ip=None,
-            dst_ip=None,
-            strict_mode=False,
-            ignore_src_any=False,
-            ignore_dst_any=False,
-            src_mask_limit=None,
-            dst_mask_limit=None,
-            base_dir=base_dir,
-            encoding="utf-8"
-    ):
-        if os.path.exists(filename) and os.path.isfile(filename):
-            target_path = filename
-        else:
-            base_dir = base_dir or os.getcwd()
-            target_path = None
-            target_name = os.path.basename(filename)
-            for root, _, files in os.walk(base_dir):
-                if target_name in files:
-                    target_path = os.path.join(root, target_name)
-                    break
-
-        if not target_path:
-            return tuple()
-
-        try:
-            with open(target_path, "r", encoding=encoding, errors="ignore") as f:
-                config_text = f.read()
-            parser = cls(config_text)
-            return parser.find_acl_matches(
-                src_ip=src_ip,
-                dst_ip=dst_ip,
-                strict_mode=strict_mode,
-                ignore_src_any=ignore_src_any,
-                ignore_dst_any=ignore_dst_any,
-                src_mask_limit=src_mask_limit,
-                dst_mask_limit=dst_mask_limit
-            )
-        except Exception:
-            return tuple()
+    # @classmethod
+    # def from_local_file(
+    #         cls,
+    #         filename,
+    #         src_ip=None,
+    #         dst_ip=None,
+    #         strict_mode=False,
+    #         ignore_src_any=False,
+    #         ignore_dst_any=False,
+    #         src_mask_limit=None,
+    #         dst_mask_limit=None,
+    #         base_dir=base_dir,
+    #         encoding="utf-8"
+    # ):
+    #     if os.path.exists(filename) and os.path.isfile(filename):
+    #         target_path = filename
+    #     else:
+    #         base_dir = base_dir or os.getcwd()
+    #         target_path = None
+    #         target_name = os.path.basename(filename)
+    #         for root, _, files in os.walk(base_dir):
+    #             if target_name in files:
+    #                 target_path = os.path.join(root, target_name)
+    #                 break
+    #
+    #     if not target_path:
+    #         return tuple()
+    #
+    #     try:
+    #         with open(target_path, "r", encoding=encoding, errors="ignore") as f:
+    #             config_text = f.read()
+    #         parser = cls(config_text)
+    #         return parser.find_acl_matches(
+    #             src_ip=src_ip,
+    #             dst_ip=dst_ip,
+    #             strict_mode=strict_mode,
+    #             ignore_src_any=ignore_src_any,
+    #             ignore_dst_any=ignore_dst_any,
+    #             src_mask_limit=src_mask_limit,
+    #             dst_mask_limit=dst_mask_limit
+    #         )
+    #     except Exception:
+    #         return tuple()
 
 
 class CiscoASAParser5:
@@ -1634,7 +1596,7 @@ class FortiOSParser2:
 
         return False
 
-    def search(
+    def find_acl_matches(
             self,
             src_ip,
             dst_ip,
@@ -1668,42 +1630,43 @@ class FortiOSParser2:
 
         return tuple(matches)
 
-    @classmethod
-    def from_local_file(
-            cls,
-            filename,
-            src_ip,
-            dst_ip,
-            strict_mode=False,
-            ignore_src_any=False,
-            ignore_dst_any=False,
-            src_mask_limit=None,
-            dst_mask_limit=None,
-            base_dir=base_dir,
-            encoding="utf-8"
-    ):
-        for root, _, files in os.walk(base_dir):
-            for file in files:
-                if file == filename:
-                    full_path = os.path.join(root, filename)
-                    try:
-                        with open(full_path, "r", encoding=encoding, errors="ignore") as f:
-                            config_text = f.read()
-                    except Exception as e:
-                        raise Exception(f"Error reading {full_path}: {e}")
-
-                    parser = cls(config_text)
-                    return parser.search(
-                        src_ip,
-                        dst_ip,
-                        strict_mode=strict_mode,
-                        ignore_src_any=ignore_src_any,
-                        ignore_dst_any=ignore_dst_any,
-                        src_mask_limit=src_mask_limit,
-                        dst_mask_limit=dst_mask_limit
-                    )
-
-        return tuple()
+    # find_acl_matches = search
+    # @classmethod
+    # def from_local_file(
+    #         cls,
+    #         filename,
+    #         src_ip,
+    #         dst_ip,
+    #         strict_mode=False,
+    #         ignore_src_any=False,
+    #         ignore_dst_any=False,
+    #         src_mask_limit=None,
+    #         dst_mask_limit=None,
+    #         base_dir=base_dir,
+    #         encoding="utf-8"
+    # ):
+    #     for root, _, files in os.walk(base_dir):
+    #         for file in files:
+    #             if file == filename:
+    #                 full_path = os.path.join(root, filename)
+    #                 try:
+    #                     with open(full_path, "r", encoding=encoding, errors="ignore") as f:
+    #                         config_text = f.read()
+    #                 except Exception as e:
+    #                     raise Exception(f"Error reading {full_path}: {e}")
+    #
+    #                 parser = cls(config_text)
+    #                 return parser.search(
+    #                     src_ip,
+    #                     dst_ip,
+    #                     strict_mode=strict_mode,
+    #                     ignore_src_any=ignore_src_any,
+    #                     ignore_dst_any=ignore_dst_any,
+    #                     src_mask_limit=src_mask_limit,
+    #                     dst_mask_limit=dst_mask_limit
+    #                 )
+    #
+    #     return tuple()
 
 
 class HuaweiParser4:
@@ -2199,10 +2162,15 @@ class HuaweiParser4:
 
 
 class CiscoNexusParser2:
-    def __init__(self, lines):
-        self.lines = lines
-        self.object_groups = defaultdict(list)  # name -> [networks]
-        self.acl_lines = []  # list of (acl_name, line)
+    def __init__(self, config_or_lines):
+        # Если передали единую строку (например, из f.read()), разбиваем её на строки
+        if isinstance(config_or_lines, str):
+            self.lines = config_or_lines.splitlines()
+        else:
+            self.lines = config_or_lines
+
+        self.object_groups = defaultdict(list)
+        self.acl_lines = []
         self.parse()
 
     def parse(self):
@@ -2583,40 +2551,6 @@ class CiscoNexusParser2:
                 continue
         return tuple(matches)
 
-    @classmethod
-    def from_local_file(
-            cls,
-            filename,
-            src_ip=None,
-            dst_ip=None,
-            strict_mode=False,
-            ignore_src_any=False,
-            ignore_dst_any=False,
-            src_mask_limit=None,
-            dst_mask_limit=None,
-            base_dir=base_dir,
-            encoding="utf-8"
-    ):
-        for root, _, files in os.walk(base_dir):
-            for file in files:
-                if file == filename:
-                    full_path = os.path.join(root, file)
-                    try:
-                        with open(full_path, "r", encoding=encoding, errors="ignore") as f:
-                            lines = f.readlines()
-                    except Exception:
-                        continue
-                    parser = cls(lines)
-                    return parser.find_acl_matches(
-                        src_ip=src_ip,
-                        dst_ip=dst_ip,
-                        strict_mode=strict_mode,
-                        ignore_src_any=ignore_src_any,
-                        ignore_dst_any=ignore_dst_any,
-                        src_mask_limit=src_mask_limit,
-                        dst_mask_limit=dst_mask_limit
-                    )
-        return tuple()
 
 
 class JuniperACLParser2:
@@ -3273,7 +3207,7 @@ class EltexESRParser2:
         return None
 
     def _matches(self, input_str, candidates, strict_mode, ignore_any=False, mask_limit=None):
-        ANY_VARIANTS = ("any", "any4", "all", "0.0.0.0/0")
+        ANY_VARIANTS = frozenset({"any", "any4", "all", "0.0.0.0/0"})
 
         # 1. СТРОГАЯ ПРОВЕРКА IGNORE_ANY (Первей всего!)
         is_any_in_candidates = any(c in ANY_VARIANTS for c in candidates)
@@ -4105,10 +4039,7 @@ class CiscoIOSParser2(BaseACLParser):
         if i < len(parts) and parts[i] in ['permit', 'deny']:
             i += 1
 
-        KNOWN_PROTOCOLS = {
-            'ip', 'tcp', 'udp', 'icmp', 'igmp', 'ipinip', 'gre',
-            'esp', 'ah', 'eigrp', 'ospf', 'nos', 'pim', 'pcp'
-        }
+        KNOWN_PROTOCOLS = {'tcp', 'udp', 'ip', 'icmp'}
 
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
@@ -4230,7 +4161,7 @@ class HPProCurveParser2(BaseACLParser):
             i += 1
 
         # 3. Пропуск протокола для extended ACL (ip, tcp, udp, icmp, etc.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp', 'igmp', 'ipinip', 'gre', 'esp', 'ah'}
+        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
@@ -4407,7 +4338,7 @@ class IPInfusionParser(BaseACLParser):
             i += 1
 
         # 4. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp', 'igmp', 'gre', 'esp', 'ah', 'ospf'}
+        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
@@ -4568,7 +4499,7 @@ class EdgeCoreParser(BaseACLParser):
             i += 1
 
         # 3. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp', 'igmp', 'gre', 'esp', 'ah'}
+        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
         if acl_type == 'extended' and i < len(parts):
             if parts[i].lower() in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
@@ -4846,7 +4777,7 @@ class DellOSParser(BaseACLParser):
             i += 1
 
         # 4. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp', 'igmp', 'gre', 'esp', 'ah'}
+        KNOWN_PROTOCOLS = ('ip', 'tcp', 'udp', 'icmp')
         if acl_type == 'extended' and i < len(parts):
             if parts[i].lower() in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
@@ -5026,7 +4957,7 @@ class QTechParser(BaseACLParser):
             i += 1
 
         # 4. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp', 'igmp', 'gre', 'esp', 'ah'}
+        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
         if acl_type == 'extended' and i < len(parts):
             if parts[i].lower() in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
