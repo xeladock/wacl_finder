@@ -42,15 +42,15 @@ app.include_router(nb_router)
 app.mount("/static", StaticFiles(directory=os.path.join(APP_DIR, "static")), name="static")
 
 PLATFORM_GROUPS = {
-    "Cisco ASA": frozenset({"Cisco ASA"}),
-    "Cisco Firepower": frozenset({"Cisco FXOS"}),
-    "Cisco IOS": frozenset({"Cisco IOS"}),
-    "Cisco IOS XE": frozenset({"Cisco IOS XE"}),
-    "Cisco NX-OS": frozenset({"Cisco NX-OS"}),
-    "FortiOS": frozenset({"FortiOS"}),
+    "Cisco ASA": ("Cisco ASA",),
+    "Cisco Firepower": ("Cisco FXOS",),
+    "Cisco IOS": ("Cisco IOS",),
+    "Cisco IOS XE": ("Cisco IOS XE",),
+    "Cisco NX-OS": ("Cisco NX-OS",),
+    "FortiOS": ("FortiOS",),
     "Huawei": frozenset({"Huawei VRP", "Huawei VRP 2403"}),
-    "Eltex": frozenset({"Eltex"}),
-    "Eltex ESR": frozenset({"Eltex ESR"}),
+    "Eltex": ("Eltex",),
+    "Eltex ESR": ("Eltex ESR",),
     "HP ProCurve/HPE": frozenset({
         "HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"
     }),

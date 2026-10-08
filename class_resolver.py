@@ -11,6 +11,10 @@ from path import DATA_DIR
 
 base_dir = DATA_DIR + "/config_files_clear"
 
+KNOWN_PROTOCOLS = frozenset({
+    'ip', 'tcp', 'udp', 'icmp', 'ipv4'
+})
+PORT_OPS = frozenset({'eq', 'gt', 'lt', 'neq', 'range'})
 
 class BaseACLParser:
     """ Базовый класс для сопоставления IP, масок и проверки лимитов/ignore_any """
@@ -398,12 +402,12 @@ class CiscoIOSXEParser2:
             i = 2
         if i < len(parts) and parts[i].isdigit():
             i += 1
-        if i < len(parts) and parts[i] in ['permit', 'deny']:
+        if i < len(parts) and parts[i] in ('permit', 'deny'):
             i += 1
 
-        KNOWN_PROTOCOLS = {
-            'ip', 'ipv4', 'tcp', 'udp', 'icmp'
-        }
+        # KNOWN_PROTOCOLS = frozenset({
+        #     'ip', 'tcp', 'udp', 'icmp','ipv4'
+        # })
 
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
@@ -413,7 +417,7 @@ class CiscoIOSXEParser2:
             if idx >= len(parts):
                 return "any", idx
             word = parts[idx]
-            if word in ["object-group", "addrgroup"]:
+            if word in ("object-group", "addrgroup"):
                 if idx + 1 < len(parts):
                     return parts[idx + 1], idx + 2
                 return "any", idx + 2
@@ -421,7 +425,7 @@ class CiscoIOSXEParser2:
                 if idx + 1 < len(parts) and self._is_ip(parts[idx + 1]):
                     return parts[idx + 1] + "/32", idx + 2
                 return "any", idx + 2
-            elif word in ["any", "any4"]:
+            elif word in ("any", "any4"):
                 return "any", idx + 1
             elif re.match(r'^\d+\.\d+\.\d+\.\d+/\d+$', word):
                 return word, idx + 1
@@ -440,12 +444,12 @@ class CiscoIOSXEParser2:
         if acl_type == 'standard':
             return src, "any"
 
-        while i < len(parts) and parts[i] in ['eq', 'range', 'gt', 'lt', 'established', 'log', 'nexthop1', 'vrf']:
+        while i < len(parts) and parts[i] in ('eq', 'range', 'gt', 'lt', 'established', 'log', 'nexthop', 'vrf'):
             # Пропускаем параметры портов и опций XR (nexthop1/vrf/и т.д.)
-            if parts[i] in ['nexthop1', 'vrf']:
+            if parts[i] in ('nexthop', 'vrf'):
                 i += 2
             else:
-                i += 2 if parts[i] in ['eq', 'gt', 'lt', 'log', 'established'] else 3
+                i += 2 if parts[i] in ('eq', 'gt', 'lt', 'log', 'established') else 3
 
         dst, i = parse_entry(i)
         return src, dst
@@ -563,7 +567,7 @@ class CiscoIOSXEParser2:
                 parts = line.split(maxsplit=4)
                 header_prefix = 'ip access-list' if line.startswith("ip access-list ") else 'ipv4 access-list'
                 if len(parts) >= 3:
-                    acl_type = parts[2] if len(parts) == 4 and parts[2] in ['standard', 'extended'] else 'extended'
+                    acl_type = parts[2] if len(parts) == 4 and parts[2] in ('standard', 'extended') else 'extended'
                     current_acl = parts[3] if len(parts) == 4 else parts[2]
                     in_acl = True
                 continue
@@ -884,10 +888,10 @@ class CiscoIOSParser3:
             if i < len(parts) and parts[i - 1] == "seq":
                 i += 1
 
-        if i < len(parts) and parts[i] in ['permit', 'deny']:
+        if i < len(parts) and parts[i] in ('permit', 'deny'):
             i += 1
 
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
+        # KNOWN_PROTOCOLS = frozenset({'ip', 'tcp', 'udp', 'icmp'})
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
@@ -897,7 +901,7 @@ class CiscoIOSParser3:
                 return "any", idx
             word = parts[idx]
 
-            if word in ["object-group", "addrgroup"]:
+            if word in ("object-group", "addrgroup"):
                 return (parts[idx + 1], idx + 2) if idx + 1 < len(parts) else ("any", idx + 1)
             elif word == "host":
                 return (parts[idx + 1] + "/32", idx + 2) if idx + 1 < len(parts) else ("any", idx + 1)
@@ -1312,7 +1316,7 @@ class CiscoASAParser5:
 
     def _extract_src_dst(self, parts):
         i = 4
-        if parts[i] in ['ip', 'tcp', 'udp', 'icmp']:
+        if parts[i] in ('ip', 'tcp', 'udp', 'icmp'):
             i += 1
         elif i < len(parts) and parts[i] == 'object-group':
             i += 2
@@ -2264,8 +2268,8 @@ class CiscoNexusParser2:
                 continue
             if in_acl:
                 parts = line.split()
-                if parts and (parts[0] in ["permit", "deny"] or (
-                        parts[0].isdigit() and len(parts) > 1 and parts[1] in ["permit", "deny"])):
+                if parts and (parts[0] in ("permit", "deny") or (
+                        parts[0].isdigit() and len(parts) > 1 and parts[1] in ("permit", "deny"))):
                     self.acl_lines.append((current_acl, original_line))
                 elif line.startswith("statistics per-entry"):
                     continue
@@ -2408,23 +2412,23 @@ class CiscoNexusParser2:
             return False
 
     def _is_port_operator(self, token):
-        return token in ['eq', 'gt', 'lt', 'neq', 'range']
+        return token in PORT_OPS
 
     def _extract_src_dst(self, parts):
         idx = 0
         if parts and parts[0].isdigit():
             idx += 1
-        if idx < len(parts) and parts[idx] in ['permit', 'deny']:
+        if idx < len(parts) and parts[idx] in ('permit', 'deny'):
             idx += 1
-        if idx < len(parts) and parts[idx] not in ['any', 'host', 'object-group',
-                                                   'addrgroup'] and not self._is_ip_or_net(parts[idx]):
+        if idx < len(parts) and parts[idx] not in ('any', 'host', 'object-group',
+                                                   'addrgroup') and not self._is_ip_or_net(parts[idx]):
             idx += 1
 
         def parse_entry(idx):
             if idx >= len(parts):
                 return None, idx
             val = parts[idx]
-            if val in ["object-group", "addrgroup"]:
+            if val in ("object-group", "addrgroup"):
                 if idx + 1 < len(parts):
                     return parts[idx + 1], idx + 2
                 return None, idx + 1
@@ -2432,7 +2436,7 @@ class CiscoNexusParser2:
                 if idx + 1 < len(parts):
                     return f"{parts[idx + 1]}/32", idx + 2
                 return None, idx + 1
-            elif val in ["any", "any4"]:
+            elif val in ("any", "any4"):
                 return "any", idx + 1
             elif '/' in val:
                 try:
@@ -3661,7 +3665,7 @@ class HPEParser2:
             return []
         idx += 1
 
-        if idx < len(parts) and parts[idx].lower() in ("ip", "tcp", "udp", "icmp", "esp", "ah", "gre", "pim", "igmp"):
+        if idx < len(parts) and parts[idx].lower() in ("ip", "tcp", "udp", "icmp"):
             idx += 1
 
         src_spec, consumed = self._parse_office_addr(parts, idx)
@@ -4036,10 +4040,10 @@ class CiscoIOSParser2(BaseACLParser):
             if i < len(parts) and parts[i - 1] == "seq":
                 i += 1
 
-        if i < len(parts) and parts[i] in ['permit', 'deny']:
+        if i < len(parts) and parts[i] in ('permit', 'deny'):
             i += 1
 
-        KNOWN_PROTOCOLS = {'tcp', 'udp', 'ip', 'icmp'}
+        # KNOWN_PROTOCOLS = frozenset({'tcp', 'udp', 'ip', 'icmp'})
 
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
@@ -4050,7 +4054,7 @@ class CiscoIOSParser2(BaseACLParser):
                 return "any", idx
             word = parts[idx]
 
-            if word in ["object-group", "addrgroup"]:
+            if word in ("object-group", "addrgroup"):
                 if idx + 1 < len(parts):
                     return parts[idx + 1], idx + 2
                 return "any", idx + 1
@@ -4161,12 +4165,12 @@ class HPProCurveParser2(BaseACLParser):
             i += 1
 
         # 3. Пропуск протокола для extended ACL (ip, tcp, udp, icmp, etc.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
+        # KNOWN_PROTOCOLS = frozenset({'ip', 'tcp', 'udp', 'icmp'})
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
 
-        PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range'}
+        # PORT_OPS = frozenset({'eq', 'gt', 'lt', 'neq', 'range'})
 
         def consume_port_and_flags(idx):
             """ Сдвигает индекс через операторы портов и служебные флаги """
@@ -4338,12 +4342,12 @@ class IPInfusionParser(BaseACLParser):
             i += 1
 
         # 4. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
+        # KNOWN_PROTOCOLS = frozenset({'ip', 'tcp', 'udp', 'icmp'})
         if acl_type == 'extended' and i < len(parts):
             if parts[i] in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
 
-        PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range'}
+        # PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range'}
 
         def consume_port_and_flags(idx):
             """ Пропускает порты и мета-флаги (log, established и т.д.) """
@@ -4499,12 +4503,12 @@ class EdgeCoreParser(BaseACLParser):
             i += 1
 
         # 3. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
+        # KNOWN_PROTOCOLS = frozenset({'ip', 'tcp', 'udp', 'icmp'})
         if acl_type == 'extended' and i < len(parts):
             if parts[i].lower() in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
 
-        PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range', 'destination-port', 'source-port'}
+        # PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range', 'destination-port', 'source-port'}
 
         def consume_port_and_flags(idx):
             """ Пропускает специфичные для EdgeCore конструкции портов (destination-port 80 и т.д.) """
@@ -4777,12 +4781,12 @@ class DellOSParser(BaseACLParser):
             i += 1
 
         # 4. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = ('ip', 'tcp', 'udp', 'icmp')
+        # KNOWN_PROTOCOLS = frozenset({'ip', 'tcp', 'udp', 'icmp'})
         if acl_type == 'extended' and i < len(parts):
             if parts[i].lower() in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
 
-        PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range'}
+        # PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range'}
 
         def consume_port_and_flags(idx):
             """ Пропускает порты и мета-флаги (log threshold-in-msgs 10 interval 5 и т.д.) """
@@ -4957,12 +4961,12 @@ class QTechParser(BaseACLParser):
             i += 1
 
         # 4. Пропуск протокола для extended ACL (ip, tcp, udp, icmp и др.)
-        KNOWN_PROTOCOLS = {'ip', 'tcp', 'udp', 'icmp'}
+        # KNOWN_PROTOCOLS = frozenset({'ip', 'tcp', 'udp', 'icmp'})
         if acl_type == 'extended' and i < len(parts):
             if parts[i].lower() in KNOWN_PROTOCOLS or (parts[i].isdigit() and int(parts[i]) <= 255):
                 i += 1
 
-        PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range', 'destination-port', 'source-port'}
+        # PORT_OPS = {'eq', 'gt', 'lt', 'neq', 'range', 'destination-port', 'source-port'}
 
         def consume_port_and_flags(idx):
             """ Пропускает порты и служебные флаги """

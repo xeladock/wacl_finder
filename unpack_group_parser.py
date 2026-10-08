@@ -14,6 +14,7 @@ class BaseParser(ABC):
     def get_object_group(self, group_name):
         pass
 
+
 class CiscoASAParserSVC:
     # Карта стандартных портов Cisco ASA
     WELL_KNOWN_PORTS = {
@@ -27,8 +28,25 @@ class CiscoASAParserSVC:
     def __init__(self, config_text):
         self.config = config_text
         self.lines = config_text.splitlines()
+        self.names = self.parse_all_names()  # Маппинг alias -> IP
         self.object_networks = self.parse_all_object_networks()
         self.object_services = self.parse_all_object_services()
+
+    def parse_all_names(self):
+        """Парсит строки 'name IP ALIAS [description]' в словарь"""
+        names_map = {}
+        for line in self.lines:
+            line_str = line.strip()
+            if line_str.startswith("name "):
+                parts = line_str.split()
+                if len(parts) >= 3:
+                    ip_addr = parts[1]
+                    alias_name = parts[2]
+                    names_map[alias_name] = {
+                        "ip": ip_addr,
+                        "raw_line": line_str
+                    }
+        return names_map
 
     def _resolve_port(self, port_str):
         """Преобразует строку с именем сервиса (domain, ssh, 8080) или префиксом (udp/domain) в int"""
@@ -37,7 +55,6 @@ class CiscoASAParserSVC:
 
         p_str = str(port_str).lower().strip()
 
-        # Отсекаем префикс протокола при наличии
         if "/" in p_str:
             p_str = p_str.split("/", 1)[1].strip()
 
@@ -52,90 +69,6 @@ class CiscoASAParserSVC:
         except (OSError, TypeError):
             return None
 
-    def check_service(self, objects, target_port=None, target_proto=None, _parsed_targets=None):
-        if not target_port and not _parsed_targets:
-            return [(obj["text"], False) for obj in objects]
-
-        if _parsed_targets is None:
-            raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
-            parsed_targets = []
-
-            # Нормализуем дефолтный протокол, пришедший извне
-            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
-            if clean_default_proto in (None, "", "none"):
-                clean_default_proto = None
-
-            for idx, item in enumerate(raw_items):
-                item_proto = None
-                port_str = item
-
-                # 1. Если явный слэш указан прям в элементе ("udp/88")
-                if "/" in item:
-                    parts = item.split("/", 1)
-                    item_proto = parts[0].lower().strip()
-                    port_str = parts[1].strip()
-                # 2. Если слэша нет, но это ПЕРВЫЙ элемент (idx == 0) и внешняя функция передала target_proto
-                elif idx == 0 and clean_default_proto:
-                    item_proto = clean_default_proto
-
-                if item_proto in (None, "", "none"):
-                    item_proto = None
-                else:
-                    item_proto = item_proto.lower().strip()
-
-                resolved_p = self._resolve_port(port_str)
-                if resolved_p is not None:
-                    parsed_targets.append((resolved_p, item_proto))
-        else:
-            parsed_targets = _parsed_targets
-
-        if not parsed_targets:
-            return [(obj["text"], False) for obj in objects]
-
-        result = []
-        for obj in objects:
-            match = False
-            obj_type = obj.get("type")
-
-            if obj_type == "service":
-                start_p = obj.get("start_port")
-                end_p = obj.get("end_port")
-                text_line = obj.get("text", "").lower()
-                obj_proto = str(obj.get("proto", "ip")).lower()
-
-                if "service-object tcp" in text_line or "port-object tcp" in text_line:
-                    obj_proto = "tcp"
-                elif "service-object udp" in text_line or "port-object udp" in text_line:
-                    obj_proto = "udp"
-
-                if start_p is not None and end_p is not None:
-                    for target_p, req_proto in parsed_targets:
-                        if not (start_p <= target_p <= end_p):
-                            continue
-
-                        proto_match = True
-                        if req_proto in ("tcp", "udp"):
-                            if obj_proto in ("tcp", "udp") and obj_proto != req_proto:
-                                proto_match = False
-
-                        if proto_match:
-                            match = True
-                            break
-
-            elif obj_type == "service_group_ref":
-                ref_name = obj.get("name")
-                if ref_name:
-                    sub_objects = self.get_object_group(ref_name)
-                    sub_matches = self.check_service(
-                        sub_objects,
-                        _parsed_targets=parsed_targets
-                    )
-                    if any(m[1] for m in sub_matches):
-                        match = True
-
-            result.append((obj["text"], match))
-
-        return result
     def parse_all_object_networks(self):
         objects = {}
         i = 0
@@ -153,6 +86,19 @@ class CiscoASAParserSVC:
                             end = ipaddress.ip_address(p[2])
                             objects[name] = {"type": "range", "start": start, "end": end, "text": next_line}
                             i += 1
+                        elif next_line.startswith("host"):
+                            p = next_line.split()
+                            host_val = p[1]
+                            resolved_ip = self.names[host_val]["ip"] if host_val in self.names else host_val
+                            try:
+                                objects[name] = {
+                                    "type": "host",
+                                    "network": ipaddress.ip_network(f"{resolved_ip}/32"),
+                                    "text": next_line
+                                }
+                                i += 1
+                            except ValueError:
+                                objects[name] = {"type": "object", "text": line}
                         else:
                             objects[name] = {"type": "object", "text": line}
                     else:
@@ -214,6 +160,12 @@ class CiscoASAParserSVC:
                     "type": "service_object_single",
                     "lines": obj["lines"]
                 }]
+            # Раскрываем одиночный name-алиас (например: request -> KucherOS -> 10.0.18.32)
+            elif group_name in self.names:
+                ip_str = self.names[group_name]["ip"]
+                net = ipaddress.ip_network(f"{ip_str}/32")
+                return [{"text": ip_str, "type": "host", "network": net}]
+
             return []
 
         objects = []
@@ -225,29 +177,48 @@ class CiscoASAParserSVC:
 
             if group_type == "network":
                 if line_str.startswith("network-object"):
-                    if parts[1] == "host":
-                        ip = parts[2]
-                        objects.append({
-                            "text": line_str,
-                            "type": "host",
-                            "network": ipaddress.ip_network(ip + "/32")
-                        })
-                    elif len(parts) == 3 and self._is_ip(parts[1]):
-                        ip, mask = parts[1], parts[2]
-                        net = ipaddress.ip_network(f"{ip}/{mask}", strict=False)
-                        objects.append({
-                            "text": line_str,
-                            "type": "network",
-                            "network": net
-                        })
-                    elif len(parts) == 2 and self._is_ip(parts[1]):
-                        ip = parts[1]
-                        objects.append({
-                            "text": line_str,
-                            "type": "host",
-                            "network": ipaddress.ip_network(ip + "/32")
-                        })
-                    elif len(parts) == 3 and parts[1] == "object":
+                    # 1. network-object host <IP|ALIAS>
+                    if parts[1] == "host" and len(parts) >= 3:
+                        host_or_alias = parts[2]
+                        resolved_ip = self.names[host_or_alias]["ip"] if host_or_alias in self.names else host_or_alias
+                        try:
+                            objects.append({
+                                "text": line_str,
+                                "type": "host",
+                                "network": ipaddress.ip_network(resolved_ip + "/32")
+                            })
+                        except ValueError:
+                            pass
+
+                    # 2. network-object <IP> <MASK> или network-object <ALIAS> <MASK>
+                    elif len(parts) == 3 and parts[1] != "object":
+                        ip_or_alias, mask = parts[1], parts[2]
+                        resolved_ip = self.names[ip_or_alias]["ip"] if ip_or_alias in self.names else ip_or_alias
+                        try:
+                            net = ipaddress.ip_network(f"{resolved_ip}/{mask}", strict=False)
+                            objects.append({
+                                "text": line_str,
+                                "type": "network",
+                                "network": net
+                            })
+                        except ValueError:
+                            pass
+
+                    # 3. network-object <IP|ALIAS>
+                    elif len(parts) == 2 and parts[1] != "host":
+                        ip_or_alias = parts[1]
+                        resolved_ip = self.names[ip_or_alias]["ip"] if ip_or_alias in self.names else ip_or_alias
+                        try:
+                            objects.append({
+                                "text": line_str,
+                                "type": "host",
+                                "network": ipaddress.ip_network(resolved_ip + "/32")
+                            })
+                        except ValueError:
+                            pass
+
+                    # 4. network-object object <NAME>
+                    elif len(parts) >= 3 and parts[1] == "object":
                         objects.append({
                             "text": line_str,
                             "type": "object_ref",
@@ -320,6 +291,88 @@ class CiscoASAParserSVC:
             "end_port": end_port
         }
 
+    def check_service(self, objects, target_port=None, target_proto=None, _parsed_targets=None):
+        if not target_port and not _parsed_targets:
+            return [(obj["text"], False) for obj in objects]
+
+        if _parsed_targets is None:
+            raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+            parsed_targets = []
+
+            clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+            if clean_default_proto in (None, "", "none"):
+                clean_default_proto = None
+
+            for idx, item in enumerate(raw_items):
+                item_proto = None
+                port_str = item
+
+                if "/" in item:
+                    parts = item.split("/", 1)
+                    item_proto = parts[0].lower().strip()
+                    port_str = parts[1].strip()
+                elif idx == 0 and clean_default_proto:
+                    item_proto = clean_default_proto
+
+                if item_proto in (None, "", "none"):
+                    item_proto = None
+                else:
+                    item_proto = item_proto.lower().strip()
+
+                resolved_p = self._resolve_port(port_str)
+                if resolved_p is not None:
+                    parsed_targets.append((resolved_p, item_proto))
+        else:
+            parsed_targets = _parsed_targets
+
+        if not parsed_targets:
+            return [(obj["text"], False) for obj in objects]
+
+        result = []
+        for obj in objects:
+            match = False
+            obj_type = obj.get("type")
+
+            if obj_type == "service":
+                start_p = obj.get("start_port")
+                end_p = obj.get("end_port")
+                text_line = obj.get("text", "").lower()
+                obj_proto = str(obj.get("proto", "ip")).lower()
+
+                if "service-object tcp" in text_line or "port-object tcp" in text_line:
+                    obj_proto = "tcp"
+                elif "service-object udp" in text_line or "port-object udp" in text_line:
+                    obj_proto = "udp"
+
+                if start_p is not None and end_p is not None:
+                    for target_p, req_proto in parsed_targets:
+                        if not (start_p <= target_p <= end_p):
+                            continue
+
+                        proto_match = True
+                        if req_proto in ("tcp", "udp"):
+                            if obj_proto in ("tcp", "udp") and obj_proto != req_proto:
+                                proto_match = False
+
+                        if proto_match:
+                            match = True
+                            break
+
+            elif obj_type == "service_group_ref":
+                ref_name = obj.get("name")
+                if ref_name:
+                    sub_objects = self.get_object_group(ref_name)
+                    sub_matches = self.check_service(
+                        sub_objects,
+                        _parsed_targets=parsed_targets
+                    )
+                    if any(m[1] for m in sub_matches):
+                        match = True
+
+            result.append((obj["text"], match))
+
+        return result
+
     def check_ip(self, objects, ip_query):
         if not ip_query:
             return [(obj["text"], False) for obj in objects]
@@ -340,7 +393,7 @@ class CiscoASAParserSVC:
             match = False
             for target in targets:
                 if obj["type"] in ["host", "network"]:
-                    if target.overlaps(obj["network"]):
+                    if "network" in obj and target.overlaps(obj["network"]):
                         match = True
                         break
                 elif obj["type"] == "object_ref":
@@ -350,6 +403,10 @@ class CiscoASAParserSVC:
                         if ref["type"] == "range":
                             if (ref["start"] <= target.network_address <= ref["end"] or
                                     ref["start"] <= target.broadcast_address <= ref["end"]):
+                                match = True
+                                break
+                        elif ref["type"] in ["host", "network"]:
+                            if "network" in ref and target.overlaps(ref["network"]):
                                 match = True
                                 break
                 elif obj["type"] == "range":
