@@ -9,6 +9,14 @@ from unpack_group_core import get_object_group
 # Создаем роутер с префиксом, чтобы не путать с другими путями
 router = APIRouter(prefix="/api/og", tags=["OG Viewer"])
 
+data_types = frozenset({
+                "service", "service_group_ref", "service_object",
+                "service_object_ref", "service_single",
+                "port", "port_range"
+            })
+
+port_types = frozenset({"tcp", "udp", "ip"})
+
 # Описываем входящие данные
 class OGSearchRequest(BaseModel):
     device: str
@@ -112,11 +120,7 @@ async def search_og(data: OGSearchRequest):
 
         # Определяем, является ли группа сервисной
         is_service_group = any(
-            obj.get("type") in frozenset({
-                "service", "service_group_ref", "service_object",
-                "service_object_ref", "service_single",
-                "port", "port_range"  # <-- ДОБАВЛЕНЫ ТИПЫ ELTEX
-            })
+            obj.get("type") in data_types
             for obj in objects
         )
 
@@ -128,7 +132,7 @@ async def search_og(data: OGSearchRequest):
 
             if "/" in query and not query.startswith("1"):  # защита от случайных /24
                 parts = query.split("/")
-                if len(parts) == 2 and parts[0].lower() in frozenset({"tcp", "udp", "ip"}):
+                if len(parts) == 2 and parts[0].lower() in port_types:
                     target_proto = parts[0].lower()
                     target_port = parts[1]
 
@@ -140,17 +144,17 @@ async def search_og(data: OGSearchRequest):
                 except TypeError as e:
                     # Резервный вызов, если парсер принимает только позиционные аргументы (objects, target_port, target_proto)
                     check_results = parser.check_service(objects, target_port, target_proto)
-                    print(e)
+                    # print(e)
             else:
                 check_results = [(obj["text"], False) for obj in objects]
-                print("else 1")
+                # print("else 1")
         else:
             # print("else 2")
             # Стандартный поиск по IP-адресам/сетям
             check_results = parser.check_ip(objects, query)
 
         # Формируем ответ
-        print("check_results is", check_results )
+        # print("check_results is", check_results )
         results = []
         cnt = 0
         for text, match in check_results:

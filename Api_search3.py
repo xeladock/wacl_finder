@@ -30,7 +30,7 @@ output_dir = DATA_DIR+"/config_files_clear"
 # }
 # для вывода PREFIX_LABELS
 PREFIX_LABELS = {
-    "Корпоративный Центр": "CEMS",
+    "Корпоративный Центр": ("CEMS", "CEMO-DCNG"),
     "Центр": "CE",
     "Волга": "PR",
     "Дальний Восток": "DV",
@@ -40,7 +40,7 @@ PREFIX_LABELS = {
     "Сибирь": "SI"
 }
 # для расчета в список dd
-FIX_LABELS = {"КЦ": "CEMS",
+FIX_LABELS = {"КЦ": ("CEMS", "CEMO-DCNG"),
     "Центр": "CE",
     "Волга": "PR",
     "ДВ": "DV",
@@ -83,18 +83,23 @@ def region(vv):
     region_name = next(
         (label for label, prefix in PREFIX_LABELS.items() if vv.startswith(prefix))
     )
+    # print(region_name)
     # print("vv:",vv)
     return region_name
 
 def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False,ignore_src_any=False,
         ignore_dst_any=False, src_mask_limit=None, dst_mask_limit=None):
 
+    print(type(allowed_ues))
+    print(type(allowed_prefixes))
+    print(type(allowed_platforms))
+
     search_text = (src_ip, dst_ip)
     dd = defaultdict(list)
     # print("base dd")
     # prefix_to_region = {v: k for k, v in PREFIX_LABELS.items()}
     # print("begis any_boxes is: ", ignore_src_any, ignore_dst_any)
-    for root, dirs, files in os.walk(output_dir,followlinks=True):
+    for root, dirs, files in os.walk(output_dir):
         # print("rdf", root, dirs, files)
         # parts = root.split(os.sep)[1:]
         parts = root.lstrip(os.sep).split(os.sep)
@@ -124,11 +129,16 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
 
         for i in allowed_prefixes:
             reg = FIX_LABELS.get(i)
-            # print('reg is',reg)
+            # print('reg is',reg, i)
             if reg:
                 for file in files:
+                    # if i == "КЦ":
+                    #     if file.startswith("CEMO-DCNG"):
+                    #         dd[(loc, pl)].append(file)
                     if i == "Центр":
-                        if file.startswith("CE") and not file.startswith("CEMS"):
+                        # if file.startswith("CEMO-DCNG"):
+                        #     pass
+                        if file.startswith("CE") and not file.startswith(("CEMS", "CEMO-DCNG")):
                             dd[(loc, pl)].append(file)
 
                         # 2. Стандартная логика для всех остальных регионов (КЦ, Волга, Урал и т.д.)
@@ -165,7 +175,8 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
             )
             if res:
                         res_device[k1, region(vv)].append(vv)
-                        yield(f"----{k2} {k1} {region(vv)}----")
+                        # print(res_device)
+                        yield(f"--- 🌐 {k2} {k1} {region(vv)} 🌐 ---")
                         yield(vv + ": \n" + "\n".join(res) + "\n")
         # elif k2 == 'FortiOS':
         #     # print(k1,k2,v)

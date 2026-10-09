@@ -54,30 +54,8 @@ def detect_vendor(path):
         "Cisco PIX": "cisco_pix"
     }
     spath = path.split('/')[-2]
-    # print("spath is", spath)
-    print("path in func: ", spath)
-    try:
-        return detect_vendor_map[spath]
-    except: return None
+    return detect_vendor_map.get(spath)
 
-    # if "Cisco ASA" in path:
-    #     return "cisco_asa"
-    # if "Cisco IOS XE" in path:
-    #     return "cisco_ios_xe"
-    # if "Cisco FXOS" in path:
-    #     return "cisco_fxos"
-    # if "Cisco NX-OS" in path:
-    #     return "cisco_nxos"
-    # if "FortiOS" in path:
-    #     return "fortigate"
-    # if "Cisco PIX" in path:
-    #     return "cisco_pix"
-    # if "Huawei VRP" in path:
-    #     return "huawei_vrp"
-    # if "Eltex ESR" in path:
-    #     return "eltex_esr"
-    #
-    # return None
 
 def get_object_group(device, group):
 
@@ -101,9 +79,10 @@ def get_object_group(device, group):
     # print("vendor is", vendor)
     with open(path, encoding="utf8", errors="ignore") as f:
         config = f.read()
-    try:
-        parser = vendor_map[vendor](config)
-    except:
+
+    parser=vendor_map.get(vendor)(config)
+
+    if not parser:
         return None, None, "Вендор не поддерживается или не имеет функции object-group."
     # output.config(state="disabled")
     objects = parser.get_object_group(group)

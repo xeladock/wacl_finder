@@ -186,13 +186,13 @@ def process_incoming_folder(source_folder: Path, today_str: str):
 def main():
     if not INCOMING_BASE_DIR.exists():
         lg(f"[WBC] Каталог с входящими данными не найден: {INCOMING_BASE_DIR}")
-        print(f"[WBC] Каталог с входящими данными не найден: {INCOMING_BASE_DIR}")
+        # print(f"[WBC] Каталог с входящими данными не найден: {INCOMING_BASE_DIR}")
         return
 
     # Получаем сегодняшнюю дату в формате DD_MM_YYYY (например, 17_09_2026)
     today_str = datetime.now().strftime("%d_%m_%Y")
     lg(f"[WBC] Запуск скрипта. Текущая дата календаря: {today_str}")
-    print(f"[WBC] Запуск скрипта. Текущая дата календаря: {today_str}")
+    # print(f"[WBC] Запуск скрипта. Текущая дата календаря: {today_str}")
 
     # Сканируем входящий ОСНОВНОЙ каталог
     for item in INCOMING_BASE_DIR.iterdir():
@@ -212,10 +212,10 @@ def main():
             shutil.rmtree(os.path.join(ALTER_DIR,remove_folder))
             time.sleep(1)
             lg(f"[WBC CLEANUP] Исходная папка alter удалена.")
-            print(f"[WBC CLEANUP] Исходная папка alter удалена.")
+            # print(f"[WBC CLEANUP] Исходная папка alter удалена.")
     except Exception as e:
             lg(f"[WBC WARNING] Не удалось удалить папку alter: {e}")
-            print(f"[WBC WARNING] Не удалось удалить папку alter: {e}")
+            # print(f"[WBC WARNING] Не удалось удалить папку alter: {e}")
 
     # if os.path.exists(ALTER_DIR):
     #     shutil.rmtree(ALTER_DIR.iterdir(), ignore_errors=True)

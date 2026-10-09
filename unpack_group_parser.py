@@ -17,13 +17,13 @@ class BaseParser(ABC):
 
 class CiscoASAParserSVC:
     # Карта стандартных портов Cisco ASA
-    WELL_KNOWN_PORTS = {
+    WELL_KNOWN_PORTS = frozenset({
         "ssh": 22, "telnet": 23, "smtp": 25, "domain": 53, "dns": 53,
         "www": 80, "http": 80, "pop3": 110, "ntp": 123, "https": 443,
         "snmp": 161, "syslog": 514, "radius": 1812, "tacacs": 49,
         "bgp": 179, "ldaps": 636, "kerberos": 88, "rdp": 3389,
         "sip": 5060, "h323": 1720, "ftp": 21, "tftp": 69
-    }
+    })
 
     def __init__(self, config_text):
         self.config = config_text
@@ -427,13 +427,13 @@ class CiscoASAParserSVC:
 
 class CiscoIOSXEParserSVC:
     # Карта стандартных портов (включая специфичные для IOS XE / Cisco)
-    WELL_KNOWN_PORTS = {
+    WELL_KNOWN_PORTS = frozenset({
         "ssh": 22, "telnet": 23, "smtp": 25, "domain": 53, "dns": 53,
         "www": 80, "http": 80, "pop3": 110, "ntp": 123, "https": 443,
         "snmp": 161, "syslog": 514, "radius": 1812, "tacacs": 49,
         "bgp": 179, "ldaps": 636, "kerberos": 88, "rdp": 3389,
         "sip": 5060, "h323": 1720, "ftp": 21, "tftp": 69, "msrpc": 135
-    }
+    })
 
     def __init__(self, config_text):
         self.config = config_text
@@ -853,7 +853,7 @@ class CiscoIOSXEParserSVC:
 
 class CiscoFirepowerParserSVC:
     # Карта стандартных портов
-    WELL_KNOWN_PORTS = {
+    WELL_KNOWN_PORTS = frozenset({
         "ssh": 22, "telnet": 23, "smtp": 25, "domain": 53, "dns": 53,
         "www": 80, "http": 80, "pop3": 110, "ntp": 123, "https": 443,
         "snmp": 161, "syslog": 514, "radius": 1812, "tacacs": 49,
@@ -861,7 +861,7 @@ class CiscoFirepowerParserSVC:
         "sip": 5060, "h323": 1720, "ftp": 21, "tftp": 69,
         "netbios-ns": 137, "netbios-dgm": 138, "netbios-ssn": 139,
         "microsoft-ds": 445
-    }
+    })
 
     def __init__(self, config_text):
         self.config = config_text

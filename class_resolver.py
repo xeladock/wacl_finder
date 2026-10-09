@@ -14,6 +14,7 @@ base_dir = DATA_DIR + "/config_files_clear"
 KNOWN_PROTOCOLS = frozenset({
     'ip', 'tcp', 'udp', 'icmp', 'ipv4'
 })
+
 PORT_OPS = frozenset({'eq', 'gt', 'lt', 'neq', 'range'})
 
 class BaseACLParser:

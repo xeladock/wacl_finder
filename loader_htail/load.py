@@ -105,7 +105,7 @@ def get_device_platform(device_name, netbox_token, save_file):
             return None
         device = data['results'][0]
         platform = device.get('platform')
-        if not platform:
+        if not platform or platform == 'Raisecom':
             # print("no platform")
             return None
 
@@ -142,13 +142,13 @@ def cleanup_old_folders(base_dir, current_folder_name, save_file):
     res_dir= os.path.join(base_dir,"data")
     """Удаляет старые папки с датами, кроме текущей рабочей"""
     prefix = "config_files_clear_"
-    save_file("🧹 Очистка устаревших папок с датами...")
+    save_file("Очистка устаревших папок с датами...")
 
     for item in os.listdir(res_dir):
         item_path = os.path.join(res_dir, item)
         # Проверяем, что это папка с нашим префиксом, но НЕ текущая свежая папка
         if os.path.isdir(item_path) and item.startswith(prefix) and item != current_folder_name:
-            save_file(f"🗑️ Удаляем старую папку: {item}...")
+            save_file(f"Удаляем старую папку: {item}...")
             make_writable(item_path)
             sleep(1)
             shutil.rmtree(item_path, ignore_errors=True)
@@ -268,10 +268,10 @@ def main():
 
                 log(f"Обработка и фильтрация файлов [{target_type}]...")
 
-                data_platforms = (
+                data_platforms = frozenset({
                     'AlteonOS', 'Citrix MPX', 'D-Link', 'Cisco UCS',
-                    'Cisco WLC', 'Cisco Small Business Software', 'Juniper Junos E-Series' , 'IronWare', 'Raisecom'
-                )
+                    'Cisco WLC', 'Cisco Small Business Software', 'Juniper Junos E-Series' , 'SNR NOS', 'IronWare',
+                })
                 ALTER_DIR = os.path.join(BASE_DIR,"alter_confs_"+date_str)
                 if not os.path.exists(ALTER_DIR):
                     os.makedirs(ALTER_DIR, exist_ok=True)
@@ -319,26 +319,26 @@ def main():
         if not os.path.isdir(TODAY_CONFIG_DIR+"/ЦОД") or not os.listdir(TODAY_CONFIG_DIR+"/ЦОД"):
             # print(TODAY_CONFIG_DIR+"/ЦОД")
             now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
-            print("Папки ЦОД не существует или она пустая")
+            # print("Папки ЦОД не существует или она пустая")
             log("Папки ЦОД не существует или она пустая")
             open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_COD"), 'a').close()
             STOP = True
             return STOP
         else:
-            print("проверка ЦОД: ", TODAY_CONFIG_DIR + "/ЦОД")
+            # print("проверка ЦОД: ", TODAY_CONFIG_DIR + "/ЦОД")
             print("папка ЦОД есть и не пустая")
 
 
         if not os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") or not os.listdir(TODAY_CONFIG_DIR+"/ЛВС"):
             # print(TODAY_CONFIG_DIR+"/ЛВС")
             now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
-            print("Папки ЛВС не существует или она пустая")
+            # print("Папки ЛВС не существует или она пустая")
             log("Папки ЛВС не существует или она пустая")
             open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_LVS"), 'a').close()
             STOP = True
             return STOP
         else:
-            print("проверка ЛВС: ", TODAY_CONFIG_DIR + "/ЛВС")
+            # print("проверка ЛВС: ", TODAY_CONFIG_DIR + "/ЛВС")
             print("папка ЛВС есть и не пустая")
 
 
@@ -356,11 +356,11 @@ def main():
         # 4. ФИНАЛЬНЫЙ ЭТАП: Переключаем симлинк на новую готовую папку
 
         success = True
-        print("success is", success)
+        # print("success is", success)
     except Exception as e:
         success = False
         # print("success is", success)
-        print("success is", success, e)
+        # print("success is", success, e)
         log(f"❌ Перехвачено исключение: {e}")
     finally:
         if success:
@@ -404,10 +404,10 @@ def main():
                 wbcmain()
                 sleep(1)
                 log("\nСоздание архива WBC завершено успешно...")
-                print("\nСоздание архива WBC завершено успешно...")
+                # print("\nСоздание архива WBC завершено успешно...")
             except:
-                log("\nСоздание архива WBC завершено неуспешно...")
-                print("\nСоздание архива WBC завершено неуспешно...")
+                log("\nОШИБКА. Создание архива WBC завершено неуспешно...")
+                # print("\nСоздание архива WBC завершено неуспешно...")
 
 
             # TODAY_CONFIG_DIR = os.path.join(BASE_DIR, START_DIR, current_today_folder_name)
@@ -415,7 +415,7 @@ def main():
             #     os.remove(READY_MARKER)
             sleep(1)
             log("\nВсе операции успешно завершены!")
-            print("\nВсе операции успешно завершены!")
+            # print("\nВсе операции успешно завершены!")
 
         else:
             if PROCESS: log("\n Нормально выходим из программы!"); return
@@ -435,11 +435,17 @@ def main():
                     shutil.rmtree(TODAY_CONFIG_DIR, ignore_errors=True)
                     sleep(1)
                 if os.path.exists(rem_dir):
-                    log("\n Попытка обработки неуспешна. Удаляем папку config_files");
+                    log("\nПопытка обработки неуспешна. Удаляем папку config_files");
                     make_writable(rem_dir)
                     sleep(1)
                     shutil.rmtree(rem_dir, ignore_errors=True)
                     sleep(1)
+                if os.path.exists(ALTER_DIR):
+                        log("\nУдаляем папку alter_dirs");
+                        shutil.rmtree(ALTER_DIR, ignore_errors=True)
+                        sleep(1)
+
+
                 return
 
             log("\nПроизошла неизвестная ошибка!")

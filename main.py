@@ -48,17 +48,15 @@ PLATFORM_GROUPS = {
     "Cisco IOS XE": ("Cisco IOS XE",),
     "Cisco NX-OS": ("Cisco NX-OS",),
     "FortiOS": ("FortiOS",),
-    "Huawei": frozenset({"Huawei VRP", "Huawei VRP 2403"}),
+    "Huawei": ("Huawei VRP", "Huawei VRP 2403"),
     "Eltex": ("Eltex",),
     "Eltex ESR": ("Eltex ESR",),
-    "HP ProCurve/HPE": frozenset({
-        "HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"
-    }),
-    "Прочие устройства": frozenset({
+    "HP ProCurve/HPE": (
+        "HPE Comware", "HP ProCurve", "HPE OfficeConnect", "HPE Comware 1910"),
+    "Прочие устройства": (
         "B4COM BCOM-OS-DC", "B4COM BCOM-OS-DC (VXLAN)", "EdgeCore",
         "QTECH NOS", "IBM_Lenovo Network OS", "Dell Networking OS",
-        "Juniper Junos", "Cisco IOS XR", "Cisco PIX"
-    }),
+        "Juniper Junos", "Cisco IOS XR", "Cisco PIX"),
 }
 
 # PLATFORM_GROUPS = {
@@ -121,26 +119,41 @@ async def search(request: SearchRequest):
         return HTMLResponse(content=get_error_html(), status_code=503)
     async def event_generator():
 
+
+        # global allowed_regions
         try:
-            regions = ["Все"] if "Все" == request.regions[-1] else request.regions
-            vendors = ["Все"] if "Все" == request.vendors[-1] else request.vendors
+
+
+            regions = ("Все",) if "Все" == request.regions[-1] else tuple(request.regions)
+            print(regions)
+            vendors = ("Все",) if "Все" == request.vendors[-1] else tuple(request.vendors)
+            print(vendors)
+            # print(vendors)
             # print("regions main is:", regions)
             # print("vendors main is:", vendors)
 
-            if vendors == ["Все"]:
-                # Объединяем все множества/списки из словаря в одно готовое множество
-                allowed_platforms = set().union(*PLATFORM_GROUPS.values())
+            if vendors == ("Все",):
+                allowed_platforms = frozenset().union(*PLATFORM_GROUPS.values())
+                print("allowed_platforms in main:", allowed_platforms)
             else:
-                allowed_platforms = set()
-                for v in vendors:
-                    if v in PLATFORM_GROUPS:
-                        allowed_platforms.update(PLATFORM_GROUPS[v])
+                allowed_platforms = frozenset().union(*(
+                    PLATFORM_GROUPS[v] for v in vendors if v in PLATFORM_GROUPS
+                ))
+            # allowed_regions = tuple()
+            if regions == ("Все",):
+                allowed_regions = tuple(request.regions[:-1])
+            else: allowed_regions = regions
+            # print(allowed_regions)
+
+
+                # print("allowed_platforms in main:",allowed_platforms)
+            ues = tuple(request.ues)
 
             if request.strict_mode:
                 fs = "Строгий поиск"
             else: fs = "Поиск"
 
-            yield f"Выбранные УЭС: {', '.join(request.ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
+            yield f"Выбранные УЭС: {', '.join(ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
 
             await asyncio.sleep(0.001)
 
@@ -188,14 +201,15 @@ async def search(request: SearchRequest):
                     await asyncio.sleep(0.001)
             # Логика запуска
             #нормальный запуск
+            isa = request.ignore_src_any
             if request.sod:
                 # Сценарий 1: Задан только Source IP (Destination IP пустой/any)
                 if request.dest_ip == "any":
                     tmp_ip = request.source_ip
 
                     # 1. Прямой поиск: Source IP -> any
-                    gen1 = parse_acl_main(tmp_ip, "any", request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
+                    gen1 = parse_acl_main(tmp_ip, "any", allowed_regions, allowed_platforms, ues,
+                                          request.strict_mode, ignore_src_any=isa,
                                                             ignore_dst_any=request.ignore_dst_any,
                                                             src_mask_limit=request.src_mask_limit,
                                                             dst_mask_limit=request.dst_mask_limit)
@@ -209,8 +223,8 @@ async def search(request: SearchRequest):
                         yield chunk
 
                     # 2. Обратный поиск: any -> Source IP
-                    gen2 = parse_acl_main("any", tmp_ip, request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
+                    gen2 = parse_acl_main("any", tmp_ip, allowed_regions, allowed_platforms, ues,
+                                          request.strict_mode, ignore_src_any=isa,
                                         ignore_dst_any=request.ignore_dst_any,
                                         src_mask_limit=request.src_mask_limit,
                                         dst_mask_limit=request.dst_mask_limit)
@@ -227,7 +241,7 @@ async def search(request: SearchRequest):
                     tmp_ip = request.dest_ip
 
                     # 1. Прямой поиск: any -> Destination IP
-                    gen1 = parse_acl_main("any", tmp_ip, request.regions, allowed_platforms, request.ues,
+                    gen1 = parse_acl_main("any", tmp_ip, allowed_regions, allowed_platforms, ues,
                                           request.strict_mode, ignore_src_any=request.ignore_src_any,
                 ignore_dst_any=request.ignore_dst_any,
                 src_mask_limit=request.src_mask_limit,
@@ -241,8 +255,8 @@ async def search(request: SearchRequest):
                         yield chunk
 
                     # 2. Обратный поиск: Destination IP -> any
-                    gen2 = parse_acl_main(tmp_ip, "any", request.regions, allowed_platforms, request.ues,
-                                          request.strict_mode, ignore_dst_any=request.ignore_dst_any,
+                    gen2 = parse_acl_main(tmp_ip, "any", allowed_regions, allowed_platforms, ues,
+                                          request.strict_mode, ignore_src_any=request.ignore_src_any, ignore_dst_any=request.ignore_dst_any,
                             src_mask_limit=request.src_mask_limit,
                             dst_mask_limit=request.dst_mask_limit)
                     async for chunk in stream_from_generator(
@@ -254,8 +268,8 @@ async def search(request: SearchRequest):
                         yield chunk
             else:
                 # print("req_any_dst: ",request.ignore_dst_any)
-                generator = parse_acl_main(request.source_ip, request.dest_ip, request.regions, allowed_platforms,
-                                           request.ues, request.strict_mode, ignore_src_any=request.ignore_src_any,
+                generator = parse_acl_main(request.source_ip, request.dest_ip, allowed_regions, allowed_platforms,
+                                           ues, request.strict_mode, ignore_src_any=request.ignore_src_any,
                             ignore_dst_any=request.ignore_dst_any,
                             src_mask_limit=request.src_mask_limit,
                             dst_mask_limit=request.dst_mask_limit)
@@ -303,7 +317,7 @@ async def export_excel(payload: list[dict]):
     ws.views.sheetView[0].showGridLines = True
 
     # 1. Заголовки таблицы (теперь всего 2 столбца)
-    headers = ["Тип записи / Устройство", "Правило / Конфигурация (ACL / Term)"]
+    headers = ["МРФ / Устройство", "Правило / Конфигурация (ACL / Term)"]
     ws.append(headers)
 
     # Стили заголовка
@@ -568,4 +582,4 @@ import uvicorn
 
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
-    uvicorn.run(app, host="0.0.0.0", port=8001, workers=1,access_log=False)
+    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)

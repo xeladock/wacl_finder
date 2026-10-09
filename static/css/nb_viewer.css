@@ -77,13 +77,20 @@ body {
     color: white;
     border: none;
     border-radius: 8px;
-    padding: 10px 40px;
+    padding: 10px 0;
     font-size: 1.05rem;
     font-weight: 600;
     width: 160px;
+    max-width: 160px;
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.nb-btn-search:active {
+    transform: translateY(0);
+    width: 160px;
+    min-width: 160px;
 }
 
 .nb-btn-save {
