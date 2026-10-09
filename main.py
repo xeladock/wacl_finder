@@ -199,6 +199,7 @@ async def search(request: SearchRequest):
                 if not found_any:
                     yield f"⭕ Ничего не найдено для {error_msg_ip_src} → {error_msg_ip_dst}\n"
                     await asyncio.sleep(0.001)
+
             # Логика запуска
             #нормальный запуск
             isa = request.ignore_src_any
