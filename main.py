@@ -123,7 +123,6 @@ async def search(request: SearchRequest):
         # global allowed_regions
         try:
 
-
             regions = ("Все",) if "Все" == request.regions[-1] else tuple(request.regions)
             print(regions)
             vendors = ("Все",) if "Все" == request.vendors[-1] else tuple(request.vendors)
@@ -201,8 +200,8 @@ async def search(request: SearchRequest):
                     await asyncio.sleep(0.001)
 
             # Логика запуска
-            #нормальный запуск
-            isa = request.ignore_src_any
+            #нормальный запускПоиск:
+            # isa = request.ignore_src_any
             if request.sod:
                 # Сценарий 1: Задан только Source IP (Destination IP пустой/any)
                 if request.dest_ip == "any":
@@ -210,7 +209,7 @@ async def search(request: SearchRequest):
 
                     # 1. Прямой поиск: Source IP -> any
                     gen1 = parse_acl_main(tmp_ip, "any", allowed_regions, allowed_platforms, ues,
-                                          request.strict_mode, ignore_src_any=isa,
+                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
                                                             ignore_dst_any=request.ignore_dst_any,
                                                             src_mask_limit=request.src_mask_limit,
                                                             dst_mask_limit=request.dst_mask_limit)
@@ -225,7 +224,7 @@ async def search(request: SearchRequest):
 
                     # 2. Обратный поиск: any -> Source IP
                     gen2 = parse_acl_main("any", tmp_ip, allowed_regions, allowed_platforms, ues,
-                                          request.strict_mode, ignore_src_any=isa,
+                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
                                         ignore_dst_any=request.ignore_dst_any,
                                         src_mask_limit=request.src_mask_limit,
                                         dst_mask_limit=request.dst_mask_limit)
