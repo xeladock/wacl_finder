@@ -130,18 +130,33 @@ async function performOGSearch() {
             }
         });
     }
-
     const groupField = document.getElementById('og-name');
+//    if (groupField) {
+//    groupField.addEventListener('input', (event) => {
+//            let value = event.target.value;
+//
+//            // Если в строке есть двоеточие
+//            if (value.includes(' ')) {
+//                // Отрезаем всё, начиная с двоеточия, и убираем лишние пробелы по краям
+//                value = value.split(' ')[0].trim();
+//
+//                // Обновляем значение прямо в поле ввода
+//                event.target.value = value;
+//            }
+//        });
+//    }
+
+
     const ipField = document.getElementById('og-ip');
     const resultsContent = document.getElementById('og-results-content');
 
 
 
     // Проверяем, что JS видит элементы на странице
-    if (!deviceField || !groupField || !ipField || !resultsContent) {
-        console.error("Ошибка: Одно из полей или панель результатов не найдены в HTML!");
-        return;
-    }
+//    if (!deviceField || !groupField || !ipField || !resultsContent) {
+//        console.error("Ошибка: Одно из полей или панель результатов не найдены в HTML!");
+//        return;
+//    }
 
     const device = deviceField.value.trim();
     const group = groupField.value.trim();
@@ -246,8 +261,6 @@ if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         downloadResult();
-
-
     }
 if (e.key === 'F1') {
         e.preventDefault(); // Блокируем стандартную справку браузера/ОС

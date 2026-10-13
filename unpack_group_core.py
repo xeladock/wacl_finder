@@ -1,7 +1,7 @@
 import ipaddress
 import os
 
-from get_acl_from_local.unpack_group_core import detect_vendor
+# from get_acl_from_local.unpack_group_core import detect_vendor
 from unpack_group_parser import (CiscoASAParserSVC, CiscoIOSXEParserSVC, CiscoFirepowerParserSVC, CiscoNexusParserSVC,
                                  CiscoPIXParserSVC, HuaweiVRPParserSVC, FortigateParserSVC,EltexObjectGroupParserSVC)
 
@@ -60,7 +60,7 @@ def detect_vendor(path):
 def get_object_group(device, group):
 
     path = find_device_config(device)
-    print("path is", path)
+    # print("path is", path)
     if not path:
         return None, None, "Устройство не найдено."
 

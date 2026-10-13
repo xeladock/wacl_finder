@@ -123,11 +123,9 @@ async def search(request: SearchRequest):
         # global allowed_regions
         try:
 
-            regions = ("Все",) if "Все" == request.regions[-1] else tuple(request.regions)
-            print(regions)
-            vendors = ("Все",) if "Все" == request.vendors[-1] else tuple(request.vendors)
-            print(vendors)
-            # print(vendors)
+            regions = ("Все",) if "Все" == request.regions[-1] else request.regions
+            # print(regions)
+            vendors = ("Все",) if "Все" == request.vendors[-1] else request.vendors
             # print("regions main is:", regions)
             # print("vendors main is:", vendors)
 
@@ -147,8 +145,8 @@ async def search(request: SearchRequest):
 
                 # print("allowed_platforms in main:",allowed_platforms)
             ues = tuple(request.ues)
-
-            if request.strict_mode:
+            rsm = request.strict_mode
+            if rsm:
                 fs = "Строгий поиск"
             else: fs = "Поиск"
 
@@ -209,7 +207,7 @@ async def search(request: SearchRequest):
 
                     # 1. Прямой поиск: Source IP -> any
                     gen1 = parse_acl_main(tmp_ip, "any", allowed_regions, allowed_platforms, ues,
-                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
+                                          rsm, ignore_src_any=request.ignore_src_any,
                                                             ignore_dst_any=request.ignore_dst_any,
                                                             src_mask_limit=request.src_mask_limit,
                                                             dst_mask_limit=request.dst_mask_limit)
@@ -224,7 +222,7 @@ async def search(request: SearchRequest):
 
                     # 2. Обратный поиск: any -> Source IP
                     gen2 = parse_acl_main("any", tmp_ip, allowed_regions, allowed_platforms, ues,
-                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
+                                          rsm, ignore_src_any=request.ignore_src_any,
                                         ignore_dst_any=request.ignore_dst_any,
                                         src_mask_limit=request.src_mask_limit,
                                         dst_mask_limit=request.dst_mask_limit)
@@ -242,7 +240,7 @@ async def search(request: SearchRequest):
 
                     # 1. Прямой поиск: any -> Destination IP
                     gen1 = parse_acl_main("any", tmp_ip, allowed_regions, allowed_platforms, ues,
-                                          request.strict_mode, ignore_src_any=request.ignore_src_any,
+                                          rsm, ignore_src_any=request.ignore_src_any,
                 ignore_dst_any=request.ignore_dst_any,
                 src_mask_limit=request.src_mask_limit,
                 dst_mask_limit=request.dst_mask_limit)
@@ -256,7 +254,7 @@ async def search(request: SearchRequest):
 
                     # 2. Обратный поиск: Destination IP -> any
                     gen2 = parse_acl_main(tmp_ip, "any", allowed_regions, allowed_platforms, ues,
-                                          request.strict_mode, ignore_src_any=request.ignore_src_any, ignore_dst_any=request.ignore_dst_any,
+                                          rsm, ignore_src_any=request.ignore_src_any, ignore_dst_any=request.ignore_dst_any,
                             src_mask_limit=request.src_mask_limit,
                             dst_mask_limit=request.dst_mask_limit)
                     async for chunk in stream_from_generator(
@@ -269,7 +267,7 @@ async def search(request: SearchRequest):
             else:
                 # print("req_any_dst: ",request.ignore_dst_any)
                 generator = parse_acl_main(request.source_ip, request.dest_ip, allowed_regions, allowed_platforms,
-                                           ues, request.strict_mode, ignore_src_any=request.ignore_src_any,
+                                           ues, rsm, ignore_src_any=request.ignore_src_any,
                             ignore_dst_any=request.ignore_dst_any,
                             src_mask_limit=request.src_mask_limit,
                             dst_mask_limit=request.dst_mask_limit)

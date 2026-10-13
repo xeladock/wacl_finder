@@ -104,8 +104,14 @@ def get_device_platform(device_name, netbox_token, save_file):
         if data.get('count', 0) == 0:
             return None
         device = data['results'][0]
+        status = device.get('status')
+
+        if status.get('value') != "active":
+            # print(status.get('value'), "пропускаем")
+            return None
+
         platform = device.get('platform')
-        if not platform or platform == 'Raisecom':
+        if not platform:
             # print("no platform")
             return None
 
@@ -279,7 +285,7 @@ def main():
                 for root, dirs, files in os.walk(clone_dir):
                     for file in files:
                         if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UK", "DV")):
-                        # if file.startswith(("CE","DV")):
+                        # if file.startswith(("PR",)):
                             src_path = os.path.join(root, file)
                             device_name = os.path.splitext(file)[0]
 
@@ -319,7 +325,7 @@ def main():
         if not os.path.isdir(TODAY_CONFIG_DIR+"/ЦОД") or not os.listdir(TODAY_CONFIG_DIR+"/ЦОД"):
             # print(TODAY_CONFIG_DIR+"/ЦОД")
             now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
-            # print("Папки ЦОД не существует или она пустая")
+            print("Папки ЦОД не существует или она пустая")
             log("Папки ЦОД не существует или она пустая")
             open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_COD"), 'a').close()
             STOP = True
@@ -332,7 +338,7 @@ def main():
         if not os.path.isdir(TODAY_CONFIG_DIR+"/ЛВС") or not os.listdir(TODAY_CONFIG_DIR+"/ЛВС"):
             # print(TODAY_CONFIG_DIR+"/ЛВС")
             now_str = datetime.now().strftime("%Y-%m-%d-%H:%M")
-            # print("Папки ЛВС не существует или она пустая")
+            print("Папки ЛВС не существует или она пустая")
             log("Папки ЛВС не существует или она пустая")
             open(os.path.join(BASE_DIR, f"ERROR-{now_str}-empty_folder_LVS"), 'a').close()
             STOP = True

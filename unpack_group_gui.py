@@ -95,7 +95,7 @@ async def search_og(data: OGSearchRequest):
     device = device.split(':')[0].strip()
     group = data.group.strip()
     query = data.ip.strip()
-    print("query is", query)
+    # print("query is", query)
     # print("dgp:",device, group, ip)
     if not device:
         raise HTTPException(status_code=400, detail="Введите название устройства.")
@@ -140,7 +140,7 @@ async def search_og(data: OGSearchRequest):
             if hasattr(parser, 'check_service'):
                 try:
                     check_results = parser.check_service(objects, target_port, target_proto)
-                    print("cr",check_results)
+                    # print("cr",check_results)
                 except TypeError as e:
                     # Резервный вызов, если парсер принимает только позиционные аргументы (objects, target_port, target_proto)
                     check_results = parser.check_service(objects, target_port, target_proto)
