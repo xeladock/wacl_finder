@@ -284,8 +284,8 @@ def main():
 
                 for root, dirs, files in os.walk(clone_dir):
                     for file in files:
-                        if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UK", "DV")):
-                        # if file.startswith(("PR",)):
+                        if file.startswith(("CE", "SZ", "SI", "PR", "UF", "UR", "DV")):
+                        # if file.startswith(("UR",)):
                             src_path = os.path.join(root, file)
                             device_name = os.path.splitext(file)[0]
 
