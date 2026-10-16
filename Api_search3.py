@@ -90,9 +90,9 @@ def region(vv):
 def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_ues=None, strict_mode=False,ignore_src_any=False,
         ignore_dst_any=False, src_mask_limit=None, dst_mask_limit=None):
 
-    # print(type(allowed_ues))
-    # print(type(allowed_prefixes))
-    # print(type(allowed_platforms))
+    print((allowed_ues))
+    print((allowed_prefixes))
+    print((allowed_platforms))
 
     search_text = (src_ip, dst_ip)
     dd = defaultdict(list)
@@ -146,7 +146,7 @@ def main(src_ip, dst_ip, allowed_prefixes=None, allowed_platforms=None, allowed_
                         if file.startswith(reg):
                             dd[(loc, pl)].append(file)
 
-    # print("dd: ",dd)
+    print("dd: ",dd)
     res_device=defaultdict(list)
     # ignore_dst_any=True
     for (k1, k2), v in dd.items():
