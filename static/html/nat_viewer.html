@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAT Viewer</title>
+    <!-- Подключаем базовые стили и специфичные стили NAT Viewer -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/nat_viewer.css">
+</head>
+<body class="nat-page-body">
+
+    <div class="nat-main-card">
+        <!-- Кнопка справки -->
+        <div class="nat-help-container">
+            <button onclick="openHelp()" class="nat-btn-help" title="Справка">?</button>
+        </div>
+
+        <h2>🔀 NAT Viewer</h2>
+
+        <!-- Форма ввода параметров -->
+        <div class="nat-form">
+            <!-- Строка: Устройство -->
+            <div class="nat-field-row">
+                <label class="nat-label">Устройство:</label>
+                <input type="text" id="nat-device" class="input-field nat-input" placeholder="Имя устройства..." maxlength="80">
+                <button onclick="clearNATField('nat-device')" class="btn-del">del</button>
+            </div>
+
+            <!-- Строка: NAT-имя / IP / Порт -->
+            <div class="nat-field-row">
+                <label class="nat-label">NAT / IP / Port:</label>
+                <input type="text" id="nat-query" class="input-field nat-input" placeholder="Имя NAT, IP, IP:port или порт..." maxlength="120">
+                <button onclick="clearNATField('nat-query')" class="btn-del">del</button>
+            </div>
+
+            <!-- Кнопка Очистить всё -->
+            <div class="nat-field-row nat-clear-all-row">
+                <button onclick="clearAllNATFields()" class="btn-del-all">del all</button>
+            </div>
+        </div>
+
+        <!-- Кнопка Поиск и Кнопка Сохранить -->
+        <div class="nat-search-container">
+            <button onclick="performNATSearch()" class="btn-search nat-btn-search">🔎 Поиск</button>
+        </div>
+
+        <!-- Кнопка Сохранить (абсолютно позиционированная справа) -->
+        <div class="nat-save-container">
+            <button onclick="downloadResult()" id="nat-save-btn" class="nat-btn-save" title="Сохранить результат">💾</button>
+        </div>
+
+        <!-- Панель результатов: SNAT и DNAT блоки -->
+        <div class="nat-results-panel">
+            <div id="nat-results-content">
+
+                <!-- Блок SNAT -->
+                <div class="nat-section-block">
+                    <h3 class="nat-section-title">Source NAT (SNAT)</h3>
+                    <div class="nat-dual-grid">
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Original (Source)</span>
+                            <div id="snat-original" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Translated (Post-NAT)</span>
+                            <div id="snat-translated" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Блок DNAT -->
+                <div class="nat-section-block">
+                    <h3 class="nat-section-title">Destination NAT (DNAT)</h3>
+                    <div class="nat-dual-grid">
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Original (Destination)</span>
+                            <div id="dnat-original" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Translated (Post-NAT)</span>
+                            <div id="dnat-translated" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем скрипт логики -->
+    <script src="/static/js/nat_viewer.js"></script>
+</body>
+</html>

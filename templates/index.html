@@ -7,15 +7,13 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/og_viewer.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
-<!--    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />-->
-<!--    <script src="https://unpkg.com/popper.js@2"></script>-->
-<!--    <script src="https://unpkg.com/tippy.js@6"></script>-->
+
 
 </head>
 <body>
 
     <header>
-        <h1>    🔍 ACL Parser v0.94</h1>
+        <h1>    🔍 ACL Parser v0.95</h1>
     </header>
     <div class="top-card">
 
@@ -24,7 +22,6 @@
             <button onclick="openHelp()" class="btn-help" title="Справка">?</button>
         </div>
 
-        <!-- ... все остальные элементы карточки (Source or Destination, Реверс IP и т.д.) ... -->
 
     </div>
     <div class="main-container">
@@ -228,6 +225,11 @@
         <div class="nb-container">
                 <button onclick="openNbViewer()" class="nb-viewer">
                     📜 NB Viewer
+                </button>
+            </div>
+            <div class="nat-container">
+                <button onclick="openNatViewer()" class="nat-viewer">
+                    🔀 NAT Viewer
                 </button>
             </div>
 

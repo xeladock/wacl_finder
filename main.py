@@ -293,6 +293,12 @@ async def get_nb_viewer():
         return HTMLResponse(content=get_error_html(), status_code=503)
     return FileResponse("static/html/nb_viewer.html")
 
+@app.get("/nat-viewer", response_class=HTMLResponse)
+async def get_nat_viewer():
+    if not is_data_valid():
+        return HTMLResponse(content=get_error_html(), status_code=503)
+    return FileResponse("static/html/nat_viewer.html")
+
 @app.get("/help", response_class=HTMLResponse)
 async def get_help():
     return FileResponse("static/html/help.html")
@@ -580,4 +586,4 @@ import uvicorn
 
 if __name__ == "__main__":
         # uvicorn.run("main:app", host="0.0.0.0", port=8087, reload=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1,access_log=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, workers=1,access_log=False)

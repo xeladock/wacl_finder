@@ -505,7 +505,7 @@ header h1 {
 .og-container {
     position: absolute;     /* Вырываем из потока */
     right: 55px;             /* Сдвигаем в самый правый край */
-    top: -160px;               /* Центрируем по высоте */
+    top: -170px;               /* Центрируем по высоте */
     transform: translateY(-50%); /* Идеальное выравнивание по высоте */
     margin: 0;
     padding: 0;
@@ -541,7 +541,7 @@ header h1 {
 .nb-container {
     position: absolute;     /* Вырываем из потока */
     right: 55px;             /* Сдвигаем в самый правый край */
-    top: -100px;               /* Центрируем по высоте */
+    top: -125px;               /* Центрируем по высоте */
     transform: translateY(-50%); /* Идеальное выравнивание по высоте */
     margin: 0;
     padding: 0;
@@ -568,10 +568,45 @@ header h1 {
     outline: none;
 }
 
+/*NAT VIEWER*/
+
 .nb-viewer:hover {
     background-color: #5d4ed8;
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.nat-viewer {
+    padding: 11px 24px;
+    font-size: 1.05rem;
+    background-color: #5563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 26px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    outline: none;
+}
+
+.nat-viewer:hover {
+    background-color: #5d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.nat-container {
+    position: absolute;     /* Вырываем из потока */
+    right: 55px;             /* Сдвигаем в самый правый край */
+    top: -77px;               /* Центрируем по высоте */
+    transform: translateY(-50%); /* Идеальное выравнивание по высоте */
+    margin: 0;
+    padding: 0;
+    display: block;
+
 }
 
 /*кнопка help*/

@@ -104,7 +104,7 @@ class BaseACLParser:
             return False
 
         # 2. Если вход поиска "any"
-        if input_str == "any":
+        if not input_str or input_str.lower() == "any":
             if mask_limit and mask_limit is not False:
                 if is_any_in_candidates:
                     return False
@@ -316,12 +316,10 @@ class CiscoIOSXEParser2:
                 parsed_mask_limit = None
 
         # 3. Если ищем "any"
-        if input_str == "any":
-            if is_any_in_candidates:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not input_str or input_str.lower() == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_in_candidates:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -1227,12 +1225,10 @@ class CiscoASAParser5:
                 parsed_mask_limit = None
 
         # 3. Если ищем "any" или пустой запрос
-        if not input_str or input_str == "any":
-            if is_any_in_candidates:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not input_str or input_str.lower() == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_in_candidates:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -1527,12 +1523,10 @@ class FortiOSParser2:
                 parsed_mask_limit = None
 
         # 4. Если сам поисковый запрос равен "any"
-        if input_str == "any":
-            if is_any_obj:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not input_str or input_str.lower() == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_obj:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -1973,12 +1967,10 @@ class HuaweiParser4:
                 parsed_mask_limit = None
 
         # 3. Обработка search == "any"
-        if spec_search == "any":
-            if is_any_in_candidates:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not spec_search or spec_search == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_in_candidates:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -2009,7 +2001,7 @@ class HuaweiParser4:
                     continue
                 if parsed_mask_limit is not None and parsed_mask_limit > 0:
                     continue
-                return not effective_strict_mode
+                return True
 
             # Парсим кандидата
             cand_net = None
@@ -2320,12 +2312,10 @@ class CiscoNexusParser2:
                 parsed_mask_limit = None
 
         # 3. Если ищем "any"
-        if not input_str or input_str == "any":
-            if is_any_in_candidates:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not input_str or input_str.lower() == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_in_candidates:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -2360,7 +2350,7 @@ class CiscoNexusParser2:
                     continue
                 if parsed_mask_limit is not None and parsed_mask_limit > 0:
                     continue
-                return not effective_strict_mode
+                return True
 
             cand_net = self._cand_to_net(cand)
 
@@ -2712,17 +2702,16 @@ class JuniperACLParser2:
                 parsed_mask_limit = None
 
         # 3. Если ищем "any"
-        if not input_str or input_str == "any":
-            if is_any_in_candidates:
+                # 3. Если ищем "any" — это wildcard, разрешающий любое совпадение по этой оси
+            if not input_str or input_str.lower() == "any":
                 if parsed_mask_limit is not None and parsed_mask_limit > 0:
                     return False
                 return True
-            return not strict_mode
 
-        if is_any_in_candidates:
-            if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                return False
-            return not strict_mode
+            if is_any_in_candidates:
+                if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                    return False
+                return not strict_mode
 
         # 4. Анализ поискового запроса (IP или Сеть)
         is_search_network = False
@@ -2752,7 +2741,7 @@ class JuniperACLParser2:
                     continue
                 if parsed_mask_limit is not None and parsed_mask_limit > 0:
                     continue
-                return not effective_strict_mode
+                return True
 
             cand_net = self._cand_to_net(cand)
 
@@ -2939,13 +2928,10 @@ class EltexACLParser2:
             except ValueError:
                 parsed_mask_limit = None
 
-        # 3. Если ищем "any"
-        if not input_str or input_str == "any":
-            if is_any_in_candidates:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not input_str or input_str.lower() == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_in_candidates:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -2980,7 +2966,7 @@ class EltexACLParser2:
                     continue
                 if parsed_mask_limit is not None and parsed_mask_limit > 0:
                     continue
-                return not effective_strict_mode
+                return True
 
             cand_net = self._cand_to_net(cand)
 
@@ -3231,12 +3217,10 @@ class EltexESRParser2:
                 parsed_mask_limit = None
 
         # 3. Если ищем "any" или пустой фильтр
-        if not input_str or input_str == "any":
-            if is_any_in_candidates:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not input_str or input_str.lower() == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_in_candidates:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -3271,7 +3255,7 @@ class EltexESRParser2:
                     continue
                 if parsed_mask_limit is not None and parsed_mask_limit > 0:
                     continue
-                return not effective_strict_mode
+                return True
 
             cand_net = self._cand_to_net(cand)
 
@@ -3749,12 +3733,10 @@ class HPEParser2:
                 parsed_mask_limit = None
 
         # 3. Если ищем "any" или пустой запрос
-        if not input_str or input_str == "any":
-            if is_any_in_candidates:
-                if parsed_mask_limit is not None and parsed_mask_limit > 0:
-                    return False
-                return True
-            return not strict_mode
+        if not input_str or input_str.lower() == "any":
+            if parsed_mask_limit is not None and parsed_mask_limit > 0:
+                return False
+            return True
 
         if is_any_in_candidates:
             if parsed_mask_limit is not None and parsed_mask_limit > 0:
@@ -3788,7 +3770,7 @@ class HPEParser2:
                     continue
                 if parsed_mask_limit is not None and parsed_mask_limit > 0:
                     continue
-                return not effective_strict_mode
+                return True
 
             cand_net = self._cand_to_net(cand)
 

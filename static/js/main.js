@@ -51,6 +51,20 @@ function openOgViewer() {
         );
     }
 
+    function openNatViewer() {
+        const width = 980;
+        const height = 780;
+        const left = (window.screen.width / 2) - (width / 2);
+        const top = (window.screen.height / 2) - (height / 2);
+        const uniqueWindowName = 'NATViewerWindow_' + Date.now();
+
+        window.open(
+            '/nat-viewer',
+            uniqueWindowName,
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`
+        );
+    }
+
         function resetIPs() {
             const src = document.getElementById('source_ip');
             const dst = document.getElementById('dest_ip');
