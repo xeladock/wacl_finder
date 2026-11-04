@@ -23,7 +23,7 @@
             <!-- Строка: Устройство -->
             <div class="nat-field-row">
                 <label class="nat-label">Устройство:</label>
-                <input type="text" id="nat-device" class="input-field nat-input" placeholder="Имя устройства..." maxlength="80">
+                <input type="text" id="nat-device" class="input-field nat-input" placeholder="Имя устройства..." maxlength="100">
                 <button onclick="clearNATField('nat-device')" class="btn-del">del</button>
             </div>
 
@@ -78,13 +78,13 @@
                     <h3 class="nat-section-title">Destination NAT (DNAT)</h3>
                     <div class="nat-dual-grid">
                         <div class="nat-sub-box">
-                            <span class="nat-box-label">Original (Destination)</span>
+                            <span class="nat-box-label">Translated (Pre-NAT)</span>
                             <div id="dnat-original" class="nat-box-content">
                                 <p class="placeholder-text">Ожидание запроса...</p>
                             </div>
                         </div>
                         <div class="nat-sub-box">
-                            <span class="nat-box-label">Translated (Post-NAT)</span>
+                            <span class="nat-box-label">Original (Destination)</span>
                             <div id="dnat-translated" class="nat-box-content">
                                 <p class="placeholder-text">Ожидание запроса...</p>
                             </div>
