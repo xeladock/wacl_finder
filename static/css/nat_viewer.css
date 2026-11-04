@@ -213,6 +213,7 @@ body::-webkit-scrollbar,
     overflow: hidden !important;
 }
 
+
 .nat-section-block {
     display: flex;
     flex-direction: column;
