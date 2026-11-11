@@ -37,8 +37,8 @@ def validate_ip_or_network2(value: str) -> bool:
         return False
 
 
-import re
-import ipaddress
+
+
 
 
 # def validate_search_query(value: str) -> bool:
@@ -95,8 +95,8 @@ async def search_og(data: OGSearchRequest):
     device = device.split(':')[0].strip()
     group = data.group.strip()
     query = data.ip.strip()
-    # print("query is", query)
-    # print("dgp:",device, group, ip)
+    print("query is", query)
+    print("dgp:",device, group)
     if not device:
         raise HTTPException(status_code=400, detail="Введите название устройства.")
     if not group:
@@ -116,6 +116,7 @@ async def search_og(data: OGSearchRequest):
         # Если поисковый запрос пустой / any
         if not query or query.lower() == "any":
             results = [{"text": obj["text"], "bold": False} for obj in objects]
+            print(results)
             return {"results": results}
 
         # Определяем, является ли группа сервисной
@@ -140,21 +141,21 @@ async def search_og(data: OGSearchRequest):
             if hasattr(parser, 'check_service'):
                 try:
                     check_results = parser.check_service(objects, target_port, target_proto)
-                    # print("cr",check_results)
+                    print("cr",check_results)
                 except TypeError as e:
                     # Резервный вызов, если парсер принимает только позиционные аргументы (objects, target_port, target_proto)
                     check_results = parser.check_service(objects, target_port, target_proto)
                     # print(e)
             else:
                 check_results = [(obj["text"], False) for obj in objects]
-                # print("else 1")
+                print("else 1")
         else:
             # print("else 2")
             # Стандартный поиск по IP-адресам/сетям
             check_results = parser.check_ip(objects, query)
 
         # Формируем ответ
-        # print("check_results is", check_results )
+        print("check_results is", check_results )
         results = []
         cnt = 0
         for text, match in check_results:

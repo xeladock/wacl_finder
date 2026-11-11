@@ -15,6 +15,514 @@ class BaseParser(ABC):
         pass
 
 
+
+
+
+# class CiscoASAParserSVC:
+#     # Карта стандартных портов Cisco ASA
+#     WELL_KNOWN_PORTS = {
+#         "ssh": 22, "telnet": 23, "smtp": 25, "domain": 53, "dns": 53,
+#         "www": 80, "http": 80, "pop3": 110, "ntp": 123, "https": 443,
+#         "snmp": 161, "syslog": 514, "radius": 1812, "tacacs": 49,
+#         "bgp": 179, "ldaps": 636, "kerberos": 88, "rdp": 3389,
+#         "sip": 5060, "h323": 1720, "ftp": 21, "tftp": 69
+#     }
+#
+#     def __init__(self, config_text):
+#         self.config = config_text
+#         self.lines = config_text.splitlines()
+#         self.names = self.parse_all_names()  # Маппинг alias -> IP
+#         self.object_networks = self.parse_all_object_networks()
+#         self.object_services = self.parse_all_object_services()
+#
+#     def parse_all_names(self):
+#         """Парсит строки 'name IP ALIAS [description]' в словарь"""
+#         names_map = {}
+#         for line in self.lines:
+#             line_str = line.strip()
+#             if line_str.startswith("name "):
+#                 parts = line_str.split()
+#                 if len(parts) >= 3:
+#                     ip_addr = parts[1]
+#                     alias_name = parts[2]
+#                     names_map[alias_name] = {
+#                         "ip": ip_addr,
+#                         "raw_line": line_str
+#                     }
+#         return names_map
+#
+#     def _resolve_port(self, port_str):
+#         """Преобразует строку с именем сервиса (domain, ssh, 8080) или префиксом (udp/domain) в int"""
+#         if port_str is None:
+#             return None
+#
+#         p_str = str(port_str).lower().strip()
+#
+#         if "/" in p_str:
+#             p_str = p_str.split("/", 1)[1].strip()
+#
+#         if p_str.isdigit():
+#             return int(p_str)
+#
+#         if p_str in self.WELL_KNOWN_PORTS:
+#             return self.WELL_KNOWN_PORTS[p_str]
+#
+#         try:
+#             return socket.getservbyname(p_str)
+#         except (OSError, TypeError):
+#             return None
+#
+#     def parse_all_object_networks(self):
+#         objects = {}
+#         i = 0
+#         while i < len(self.lines):
+#             line = self.lines[i].strip()
+#             if line.startswith("object network"):
+#                 parts = line.split()
+#                 if len(parts) >= 3:
+#                     name = parts[2]
+#                     # Собираем все строки, относящиеся к данному object network
+#                     obj_lines = []
+#                     j = i + 1
+#                     while j < len(self.lines) and self.lines[j].startswith(" "):
+#                         obj_lines.append(self.lines[j].strip())
+#                         j += 1
+#
+#                     parsed_sub_items = []
+#                     if not obj_lines:
+#                         parsed_sub_items.append({"type": "object", "text": line})
+#                     else:
+#                         for sub_line in obj_lines:
+#                             sub_parts = sub_line.split()
+#                             if not sub_parts:
+#                                 continue
+#
+#                             sub_cmd = sub_parts[0]
+#                             if sub_cmd == "host" and len(sub_parts) >= 2:
+#                                 host_val = sub_parts[1]
+#                                 resolved_ip = self.names[host_val]["ip"] if host_val in self.names else host_val
+#                                 try:
+#                                     parsed_sub_items.append({
+#                                         "type": "host",
+#                                         "network": ipaddress.ip_network(f"{resolved_ip}/32"),
+#                                         "text": sub_line
+#                                     })
+#                                 except ValueError:
+#                                     parsed_sub_items.append({"type": "object", "text": sub_line})
+#
+#                             elif sub_cmd == "subnet" and len(sub_parts) >= 3:
+#                                 ip_or_alias, mask = sub_parts[1], sub_parts[2]
+#                                 resolved_ip = self.names[ip_or_alias][
+#                                     "ip"] if ip_or_alias in self.names else ip_or_alias
+#                                 try:
+#                                     net = ipaddress.ip_network(f"{resolved_ip}/{mask}", strict=False)
+#                                     parsed_sub_items.append({
+#                                         "type": "network",
+#                                         "network": net,
+#                                         "text": sub_line
+#                                     })
+#                                 except ValueError:
+#                                     parsed_sub_items.append({"type": "object", "text": sub_line})
+#
+#                             elif sub_cmd == "range" and len(sub_parts) >= 3:
+#                                 try:
+#                                     start = ipaddress.ip_address(sub_parts[1])
+#                                     end = ipaddress.ip_address(sub_parts[2])
+#                                     parsed_sub_items.append({
+#                                         "type": "range",
+#                                         "start": start,
+#                                         "end": end,
+#                                         "text": sub_line
+#                                     })
+#                                 except ValueError:
+#                                     parsed_sub_items.append({"type": "object", "text": sub_line})
+#
+#                             elif sub_cmd == "fqdn" and len(sub_parts) >= 2:
+#                                 parsed_sub_items.append({
+#                                     "type": "fqdn",
+#                                     "text": sub_line
+#                                 })
+#                             else:
+#                                 parsed_sub_items.append({
+#                                     "type": "object",
+#                                     "text": sub_line
+#                                 })
+#
+#                     # Если объект с таким именем уже встречался ранее в конфиге, объединяем их items!
+#                     if name in objects:
+#                         objects[name]["items"].extend(parsed_sub_items)
+#                         # Обновляем тип на multi_object, раз элементов стало больше одного
+#                         if len(objects[name]["items"]) > 1:
+#                             objects[name]["type"] = "multi_object"
+#                     else:
+#                         objects[name] = {
+#                             "type": "multi_object" if len(parsed_sub_items) > 1 else parsed_sub_items[0]["type"],
+#                             "items": parsed_sub_items,
+#                             "text": line
+#                         }
+#                     i = j - 1
+#             i += 1
+#         return objects
+#     def parse_all_object_services(self):
+#         services = {}
+#         i = 0
+#         while i < len(self.lines):
+#             line = self.lines[i].strip()
+#             if line.startswith("object service"):
+#                 parts = line.split()
+#                 if len(parts) >= 3:
+#                     name = parts[2]
+#                     service_lines = []
+#                     j = i + 1
+#                     while j < len(self.lines) and self.lines[j].startswith(" "):
+#                         service_lines.append(self.lines[j].strip())
+#                         j += 1
+#                     services[name] = {"text": line, "lines": service_lines}
+#             i += 1
+#         return services
+#
+#     def get_object_group(self, group_name):
+#         group_start = None
+#         group_type = None
+#         header_proto = "ip"
+#
+#         for i, line in enumerate(self.lines):
+#             l = line.strip()
+#             if l == f"object-group network {group_name}":
+#                 group_start = i
+#                 group_type = "network"
+#                 break
+#             elif l.startswith(f"object-group service {group_name}"):
+#                 parts = l.split()
+#                 if len(parts) >= 3 and parts[2] == group_name:
+#                     group_start = i
+#                     group_type = "service"
+#                     if len(parts) >= 4:
+#                         header_proto = parts[3].lower()
+#                     break
+#
+#         if group_start is None:
+#             if group_name in self.object_networks:
+#                 obj = self.object_networks[group_name]
+#                 if "items" in obj:
+#                     res = []
+#                     for item in obj["items"]:
+#                         res.append({
+#                             "text": item["text"],
+#                             "type": item["type"],
+#                             "start": item.get("start"),
+#                             "end": item.get("end"),
+#                             "network": item.get("network")
+#                         })
+#                     return res
+#                 else:
+#                     return [{
+#                         "text": obj["text"],
+#                         "type": obj["type"],
+#                         "start": obj.get("start"),
+#                         "end": obj.get("end")
+#                     }]
+#             elif group_name in self.object_services:
+#                 obj = self.object_services[group_name]
+#                 return [{
+#                     "text": obj["text"],
+#                     "type": "service_object_single",
+#                     "lines": obj["lines"]
+#                 }]
+#             # Раскрываем одиночный name-алиас (например: request -> KucherOS -> 10.0.18.32)
+#             elif group_name in self.names:
+#                 ip_str = self.names[group_name]["ip"]
+#                 net = ipaddress.ip_network(f"{ip_str}/32")
+#                 return [{"text": ip_str, "type": "host", "network": net}]
+#
+#             return []
+#
+#         objects = []
+#         for line in self.lines[group_start + 1:]:
+#             if not line.startswith(" "):
+#                 break
+#             line_str = line.strip()
+#             parts = line_str.split()
+#
+#             if group_type == "network":
+#                 if line_str.startswith("network-object"):
+#                     # 1. network-object host <IP|ALIAS>
+#                     if parts[1] == "host" and len(parts) >= 3:
+#                         host_or_alias = parts[2]
+#                         resolved_ip = self.names[host_or_alias]["ip"] if host_or_alias in self.names else host_or_alias
+#                         try:
+#                             objects.append({
+#                                 "text": line_str,
+#                                 "type": "host",
+#                                 "network": ipaddress.ip_network(resolved_ip + "/32")
+#                             })
+#                         except ValueError:
+#                             pass
+#
+#                     # 2. network-object <IP> <MASK> или network-object <ALIAS> <MASK>
+#                     elif len(parts) == 3 and parts[1] != "object":
+#                         ip_or_alias, mask = parts[1], parts[2]
+#                         resolved_ip = self.names[ip_or_alias]["ip"] if ip_or_alias in self.names else ip_or_alias
+#                         try:
+#                             net = ipaddress.ip_network(f"{resolved_ip}/{mask}", strict=False)
+#                             objects.append({
+#                                 "text": line_str,
+#                                 "type": "network",
+#                                 "network": net
+#                             })
+#                         except ValueError:
+#                             pass
+#
+#                     # 3. network-object <IP|ALIAS>
+#                     elif len(parts) == 2 and parts[1] != "host":
+#                         ip_or_alias = parts[1]
+#                         resolved_ip = self.names[ip_or_alias]["ip"] if ip_or_alias in self.names else ip_or_alias
+#                         try:
+#                             objects.append({
+#                                 "text": line_str,
+#                                 "type": "host",
+#                                 "network": ipaddress.ip_network(resolved_ip + "/32")
+#                             })
+#                         except ValueError:
+#                             pass
+#
+#                     # 4. network-object object <NAME>
+#                     elif len(parts) >= 3 and parts[1] == "object":
+#                         objects.append({
+#                             "text": line_str,
+#                             "type": "object_ref",
+#                             "name": parts[2]
+#                         })
+#
+#             elif group_type == "service":
+#                 if line_str.startswith("service-object"):
+#                     parsed_svc = self._parse_service_object(line_str)
+#                     parsed_svc["text"] = line_str
+#                     objects.append(parsed_svc)
+#                 elif line_str.startswith("port-object"):
+#                     parsed_svc = self._parse_port_object(line_str, header_proto)
+#                     parsed_svc["text"] = line_str
+#                     objects.append(parsed_svc)
+#                 elif line_str.startswith("group-object"):
+#                     objects.append({
+#                         "text": line_str,
+#                         "type": "service_group_ref",
+#                         "name": parts[1]
+#                     })
+#
+#         return objects
+#
+#     def _parse_service_object(self, line):
+#         parts = line.split()
+#         if len(parts) >= 3 and parts[1] == "object":
+#             return {"type": "service_object_ref", "name": parts[2]}
+#
+#         proto = parts[1].lower() if len(parts) > 1 else "ip"
+#         start_port, end_port = None, None
+#
+#         if "eq" in parts:
+#             eq_idx = parts.index("eq")
+#             if eq_idx + 1 < len(parts):
+#                 p = self._resolve_port(parts[eq_idx + 1])
+#                 start_port, end_port = p, p
+#         elif "range" in parts:
+#             r_idx = parts.index("range")
+#             if r_idx + 2 < len(parts):
+#                 start_port = self._resolve_port(parts[r_idx + 1])
+#                 end_port = self._resolve_port(parts[r_idx + 2])
+#
+#         return {
+#             "type": "service",
+#             "proto": proto,
+#             "start_port": start_port,
+#             "end_port": end_port
+#         }
+#
+#     def _parse_port_object(self, line, default_proto="ip"):
+#         parts = line.split()
+#         start_port, end_port = None, None
+#
+#         if "eq" in parts:
+#             eq_idx = parts.index("eq")
+#             if eq_idx + 1 < len(parts):
+#                 p = self._resolve_port(parts[eq_idx + 1])
+#                 start_port, end_port = p, p
+#         elif "range" in parts:
+#             r_idx = parts.index("range")
+#             if r_idx + 2 < len(parts):
+#                 start_port = self._resolve_port(parts[r_idx + 1])
+#                 end_port = self._resolve_port(parts[r_idx + 2])
+#
+#         return {
+#             "type": "service",
+#             "proto": default_proto,
+#             "start_port": start_port,
+#             "end_port": end_port
+#         }
+#
+#     def check_service(self, objects, target_port=None, target_proto=None, _parsed_targets=None):
+#         if not target_port and not _parsed_targets:
+#             return [(obj["text"], False) for obj in objects]
+#
+#         if _parsed_targets is None:
+#             raw_items = [p.strip() for p in str(target_port).split(",") if p.strip()]
+#             parsed_targets = []
+#
+#             clean_default_proto = str(target_proto).lower().strip() if target_proto else None
+#             if clean_default_proto in (None, "", "none"):
+#                 clean_default_proto = None
+#
+#             for idx, item in enumerate(raw_items):
+#                 item_proto = None
+#                 port_str = item
+#
+#                 if "/" in item:
+#                     parts = item.split("/", 1)
+#                     item_proto = parts[0].lower().strip()
+#                     port_str = parts[1].strip()
+#                 elif idx == 0 and clean_default_proto:
+#                     item_proto = clean_default_proto
+#
+#                 if item_proto in (None, "", "none"):
+#                     item_proto = None
+#                 else:
+#                     item_proto = item_proto.lower().strip()
+#
+#                 resolved_p = self._resolve_port(port_str)
+#                 if resolved_p is not None:
+#                     parsed_targets.append((resolved_p, item_proto))
+#         else:
+#             parsed_targets = _parsed_targets
+#
+#         if not parsed_targets:
+#             return [(obj["text"], False) for obj in objects]
+#
+#         result = []
+#         for obj in objects:
+#             match = False
+#             obj_type = obj.get("type")
+#
+#             if obj_type == "service":
+#                 start_p = obj.get("start_port")
+#                 end_p = obj.get("end_port")
+#                 text_line = obj.get("text", "").lower()
+#                 obj_proto = str(obj.get("proto", "ip")).lower()
+#
+#                 if "service-object tcp" in text_line or "port-object tcp" in text_line:
+#                     obj_proto = "tcp"
+#                 elif "service-object udp" in text_line or "port-object udp" in text_line:
+#                     obj_proto = "udp"
+#
+#                 if start_p is not None and end_p is not None:
+#                     for target_p, req_proto in parsed_targets:
+#                         if not (start_p <= target_p <= end_p):
+#                             continue
+#
+#                         proto_match = True
+#                         if req_proto in ("tcp", "udp"):
+#                             if obj_proto in ("tcp", "udp") and obj_proto != req_proto:
+#                                 proto_match = False
+#
+#                         if proto_match:
+#                             match = True
+#                             break
+#
+#             elif obj_type == "service_group_ref":
+#                 ref_name = obj.get("name")
+#                 if ref_name:
+#                     sub_objects = self.get_object_group(ref_name)
+#                     sub_matches = self.check_service(
+#                         sub_objects,
+#                         _parsed_targets=parsed_targets
+#                     )
+#                     if any(m[1] for m in sub_matches):
+#                         match = True
+#
+#             result.append((obj["text"], match))
+#
+#         return result
+#
+#     def check_ip(self, objects, ip_query):
+#         if not ip_query:
+#             return [(obj["text"], False) for obj in objects]
+#
+#         raw_targets = [item.strip() for item in str(ip_query).split(",") if item.strip()]
+#         targets = []
+#         for raw in raw_targets:
+#             try:
+#                 targets.append(ipaddress.ip_network(raw, strict=False))
+#             except ValueError:
+#                 continue
+#
+#         if not targets:
+#             return [(obj["text"], False) for obj in objects]
+#
+#         result = []
+#         for obj in objects:
+#             match = False
+#             obj_type = obj.get("type")
+#
+#             # Если объект состоит из нескольких строк (multi_object)
+#             if obj_type == "multi_object" and "items" in obj:
+#                 for sub_item in obj["items"]:
+#                     sub_match = False
+#                     sub_type = sub_item.get("type")
+#                     for target in targets:
+#                         if sub_type in ["host", "network"]:
+#                             if "network" in sub_item and target.overlaps(sub_item["network"]):
+#                                 sub_match = True
+#                                 break
+#                         elif sub_type == "range":
+#                             if ("start" in sub_item and "end" in sub_item and
+#                                     (sub_item["start"] <= target.network_address <= sub_item["end"] or
+#                                      sub_item["start"] <= target.broadcast_address <= sub_item["end"])):
+#                                 sub_match = True
+#                                 break
+#                     result.append((sub_item["text"], sub_match))
+#                 continue
+#
+#             # Для обычных одиночных элементов
+#             for target in targets:
+#                 if obj_type in ["host", "network"]:
+#                     if "network" in obj and target.overlaps(obj["network"]):
+#                         match = True
+#                         break
+#                 elif obj_type == "range":
+#                     if ("start" in obj and "end" in obj and
+#                             (obj["start"] <= target.network_address <= obj["end"] or
+#                              obj["start"] <= target.broadcast_address <= obj["end"])):
+#                         match = True
+#                         break
+#                 elif obj_type == "object_ref":
+#                     name = obj.get("name")
+#                     if name in self.object_networks:
+#                         ref = self.object_networks[name]
+#                         ref_items = ref.get("items", [ref])
+#                         for r_item in ref_items:
+#                             r_type = r_item.get("type")
+#                             if r_type == "range":
+#                                 if ("start" in r_item and "end" in r_item and
+#                                         (r_item["start"] <= target.network_address <= r_item["end"] or
+#                                          r_item["start"] <= target.broadcast_address <= r_item["end"])):
+#                                     match = True
+#                                     break
+#                             elif r_type in ["host", "network"]:
+#                                 if "network" in r_item and target.overlaps(r_item["network"]):
+#                                     match = True
+#                                     break
+#                         if match:
+#                             break
+#
+#             result.append((obj["text"], match))
+#         return result
+#     def _is_ip(self, s):
+#         try:
+#             ipaddress.ip_address(s)
+#             return True
+#         except ValueError:
+#             return False
+
+
 class CiscoASAParserSVC:
     # Карта стандартных портов Cisco ASA
     WELL_KNOWN_PORTS = {
@@ -78,35 +586,116 @@ class CiscoASAParserSVC:
                 parts = line.split()
                 if len(parts) >= 3:
                     name = parts[2]
-                    if i + 1 < len(self.lines):
-                        next_line = self.lines[i + 1].strip()
-                        if next_line.startswith("range"):
-                            p = next_line.split()
-                            start = ipaddress.ip_address(p[1])
-                            end = ipaddress.ip_address(p[2])
-                            objects[name] = {"type": "range", "start": start, "end": end, "text": next_line}
-                            i += 1
-                        elif next_line.startswith("host"):
-                            p = next_line.split()
-                            host_val = p[1]
-                            resolved_ip = self.names[host_val]["ip"] if host_val in self.names else host_val
-                            try:
-                                objects[name] = {
-                                    "type": "host",
-                                    "network": ipaddress.ip_network(f"{resolved_ip}/32"),
-                                    "text": next_line
-                                }
-                                i += 1
-                            except ValueError:
-                                objects[name] = {"type": "object", "text": line}
-                        else:
-                            objects[name] = {"type": "object", "text": line}
+                    obj_lines = []
+                    j = i + 1
+                    while j < len(self.lines) and self.lines[j].startswith(" "):
+                        obj_lines.append(self.lines[j].strip())
+                        j += 1
+
+                    parsed_sub_items = []
+                    if not obj_lines:
+                        parsed_sub_items.append({"type": "object", "text": line})
                     else:
-                        objects[name] = {"type": "object", "text": line}
+                        for sub_line in obj_lines:
+                            sub_parts = sub_line.split()
+                            if not sub_parts:
+                                continue
+
+                            sub_cmd = sub_parts[0]
+                            if sub_cmd == "host" and len(sub_parts) >= 2:
+                                host_val = sub_parts[1]
+                                resolved_ip = self.names[host_val]["ip"] if host_val in self.names else host_val
+                                try:
+                                    parsed_sub_items.append({
+                                        "type": "host",
+                                        "network": ipaddress.ip_network(f"{resolved_ip}/32"),
+                                        "text": sub_line
+                                    })
+                                except ValueError:
+                                    parsed_sub_items.append({"type": "object", "text": sub_line})
+
+                            elif sub_cmd == "subnet" and len(sub_parts) >= 3:
+                                ip_or_alias, mask = sub_parts[1], sub_parts[2]
+                                resolved_ip = self.names[ip_or_alias][
+                                    "ip"] if ip_or_alias in self.names else ip_or_alias
+                                try:
+                                    net = ipaddress.ip_network(f"{resolved_ip}/{mask}", strict=False)
+                                    parsed_sub_items.append({
+                                        "type": "network",
+                                        "network": net,
+                                        "text": sub_line
+                                    })
+                                except ValueError:
+                                    parsed_sub_items.append({"type": "object", "text": sub_line})
+
+                            elif sub_cmd == "range" and len(sub_parts) >= 3:
+                                try:
+                                    start = ipaddress.ip_address(sub_parts[1])
+                                    end = ipaddress.ip_address(sub_parts[2])
+                                    parsed_sub_items.append({
+                                        "type": "range",
+                                        "start": start,
+                                        "end": end,
+                                        "text": sub_line
+                                    })
+                                except ValueError:
+                                    parsed_sub_items.append({"type": "object", "text": sub_line})
+
+                            elif sub_cmd == "fqdn" and len(sub_parts) >= 2:
+                                parsed_sub_items.append({
+                                    "type": "fqdn",
+                                    "text": sub_line
+                                })
+                            else:
+                                parsed_sub_items.append({
+                                    "type": "object",
+                                    "text": sub_line
+                                })
+
+                    if name in objects:
+                        objects[name]["items"].extend(parsed_sub_items)
+                        if len(objects[name]["items"]) > 1:
+                            objects[name]["type"] = "multi_object"
+                    else:
+                        objects[name] = {
+                            "type": "multi_object" if len(parsed_sub_items) > 1 else parsed_sub_items[0]["type"],
+                            "items": parsed_sub_items,
+                            "text": line
+                        }
+                    i = j - 1
             i += 1
         return objects
 
+    def _parse_object_service_line(self, line_str):
+        """Парсит строчку вида 'service tcp source eq 20118' или 'service udp destination eq www'"""
+        parts = line_str.split()
+        proto = "ip"
+        start_port, end_port = None, None
+
+        if len(parts) >= 2:
+            proto = parts[1].lower()
+
+        if "eq" in parts:
+            eq_idx = parts.index("eq")
+            if eq_idx + 1 < len(parts):
+                p = self._resolve_port(parts[eq_idx + 1])
+                start_port, end_port = p, p
+        elif "range" in parts:
+            r_idx = parts.index("range")
+            if r_idx + 2 < len(parts):
+                start_port = self._resolve_port(parts[r_idx + 1])
+                end_port = self._resolve_port(parts[r_idx + 2])
+
+        return {
+            "type": "service",
+            "proto": proto,
+            "start_port": start_port,
+            "end_port": end_port,
+            "text": line_str
+        }
+
     def parse_all_object_services(self):
+        """Парсит все блоки 'object service <name>' и их содержимое"""
         services = {}
         i = 0
         while i < len(self.lines):
@@ -116,11 +705,22 @@ class CiscoASAParserSVC:
                 if len(parts) >= 3:
                     name = parts[2]
                     service_lines = []
+                    parsed_items = []
                     j = i + 1
                     while j < len(self.lines) and self.lines[j].startswith(" "):
-                        service_lines.append(self.lines[j].strip())
+                        sub_line = self.lines[j].strip()
+                        if sub_line.startswith("service"):
+                            parsed_item = self._parse_object_service_line(sub_line)
+                            parsed_items.append(parsed_item)
+                        service_lines.append(sub_line)
                         j += 1
-                    services[name] = {"text": line, "lines": service_lines}
+
+                    services[name] = {
+                        "text": line,
+                        "lines": service_lines,
+                        "items": parsed_items
+                    }
+                    i = j - 1
             i += 1
         return services
 
@@ -147,20 +747,34 @@ class CiscoASAParserSVC:
         if group_start is None:
             if group_name in self.object_networks:
                 obj = self.object_networks[group_name]
-                return [{
-                    "text": obj["text"],
-                    "type": obj["type"],
-                    "start": obj.get("start"),
-                    "end": obj.get("end")
-                }]
+                if "items" in obj:
+                    res = []
+                    for item in obj["items"]:
+                        res.append({
+                            "text": item["text"],
+                            "type": item["type"],
+                            "start": item.get("start"),
+                            "end": item.get("end"),
+                            "network": item.get("network")
+                        })
+                    return res
+                else:
+                    return [{
+                        "text": obj["text"],
+                        "type": obj["type"],
+                        "start": obj.get("start"),
+                        "end": obj.get("end")
+                    }]
             elif group_name in self.object_services:
                 obj = self.object_services[group_name]
+                # Возвращаем полностью распарсенные элементы внутри object service
+                if obj.get("items"):
+                    return obj["items"]
                 return [{
                     "text": obj["text"],
                     "type": "service_object_single",
                     "lines": obj["lines"]
                 }]
-            # Раскрываем одиночный name-алиас (например: request -> KucherOS -> 10.0.18.32)
             elif group_name in self.names:
                 ip_str = self.names[group_name]["ip"]
                 net = ipaddress.ip_network(f"{ip_str}/32")
@@ -177,7 +791,6 @@ class CiscoASAParserSVC:
 
             if group_type == "network":
                 if line_str.startswith("network-object"):
-                    # 1. network-object host <IP|ALIAS>
                     if parts[1] == "host" and len(parts) >= 3:
                         host_or_alias = parts[2]
                         resolved_ip = self.names[host_or_alias]["ip"] if host_or_alias in self.names else host_or_alias
@@ -190,7 +803,6 @@ class CiscoASAParserSVC:
                         except ValueError:
                             pass
 
-                    # 2. network-object <IP> <MASK> или network-object <ALIAS> <MASK>
                     elif len(parts) == 3 and parts[1] != "object":
                         ip_or_alias, mask = parts[1], parts[2]
                         resolved_ip = self.names[ip_or_alias]["ip"] if ip_or_alias in self.names else ip_or_alias
@@ -204,7 +816,6 @@ class CiscoASAParserSVC:
                         except ValueError:
                             pass
 
-                    # 3. network-object <IP|ALIAS>
                     elif len(parts) == 2 and parts[1] != "host":
                         ip_or_alias = parts[1]
                         resolved_ip = self.names[ip_or_alias]["ip"] if ip_or_alias in self.names else ip_or_alias
@@ -217,7 +828,6 @@ class CiscoASAParserSVC:
                         except ValueError:
                             pass
 
-                    # 4. network-object object <NAME>
                     elif len(parts) >= 3 and parts[1] == "object":
                         objects.append({
                             "text": line_str,
@@ -391,29 +1001,56 @@ class CiscoASAParserSVC:
         result = []
         for obj in objects:
             match = False
+            obj_type = obj.get("type")
+
+            if obj_type == "multi_object" and "items" in obj:
+                for sub_item in obj["items"]:
+                    sub_match = False
+                    sub_type = sub_item.get("type")
+                    for target in targets:
+                        if sub_type in ["host", "network"]:
+                            if "network" in sub_item and target.overlaps(sub_item["network"]):
+                                sub_match = True
+                                break
+                        elif sub_type == "range":
+                            if ("start" in sub_item and "end" in sub_item and
+                                    (sub_item["start"] <= target.network_address <= sub_item["end"] or
+                                     sub_item["start"] <= target.broadcast_address <= sub_item["end"])):
+                                sub_match = True
+                                break
+                    result.append((sub_item["text"], sub_match))
+                continue
+
             for target in targets:
-                if obj["type"] in ["host", "network"]:
+                if obj_type in ["host", "network"]:
                     if "network" in obj and target.overlaps(obj["network"]):
                         match = True
                         break
-                elif obj["type"] == "object_ref":
+                elif obj_type == "range":
+                    if ("start" in obj and "end" in obj and
+                            (obj["start"] <= target.network_address <= obj["end"] or
+                             obj["start"] <= target.broadcast_address <= obj["end"])):
+                        match = True
+                        break
+                elif obj_type == "object_ref":
                     name = obj.get("name")
                     if name in self.object_networks:
                         ref = self.object_networks[name]
-                        if ref["type"] == "range":
-                            if (ref["start"] <= target.network_address <= ref["end"] or
-                                    ref["start"] <= target.broadcast_address <= ref["end"]):
-                                match = True
-                                break
-                        elif ref["type"] in ["host", "network"]:
-                            if "network" in ref and target.overlaps(ref["network"]):
-                                match = True
-                                break
-                elif obj["type"] == "range":
-                    if (obj["start"] <= target.network_address <= obj["end"] or
-                            obj["start"] <= target.broadcast_address <= obj["end"]):
-                        match = True
-                        break
+                        ref_items = ref.get("items", [ref])
+                        for r_item in ref_items:
+                            r_type = r_item.get("type")
+                            if r_type == "range":
+                                if ("start" in r_item and "end" in r_item and
+                                        (r_item["start"] <= target.network_address <= r_item["end"] or
+                                         r_item["start"] <= target.broadcast_address <= r_item["end"])):
+                                    match = True
+                                    break
+                            elif r_type in ["host", "network"]:
+                                if "network" in r_item and target.overlaps(r_item["network"]):
+                                    match = True
+                                    break
+                        if match:
+                            break
 
             result.append((obj["text"], match))
         return result
@@ -424,7 +1061,6 @@ class CiscoASAParserSVC:
             return True
         except ValueError:
             return False
-
 class CiscoIOSXEParserSVC:
     # Карта стандартных портов (включая специфичные для IOS XE / Cisco)
     WELL_KNOWN_PORTS = {
@@ -2141,202 +2777,7 @@ class CiscoNexusParserSVC:
 
         return result
 
-class CiscoASAParser:
-    def __init__(self, config_text):
-        self.config = config_text
-        self.lines = config_text.splitlines()
-        # словарь всех object network для подсветки object_ref
-        self.object_networks = self.parse_all_object_networks()
 
-    def parse_all_object_networks(self):
-        """Парсим все object network в конфиге"""
-        objects = {}
-        i = 0
-        while i < len(self.lines):
-            line = self.lines[i].strip()
-            if line.startswith("object network"):
-                name = line.split()[2]
-                # если следующая строка range
-                if i + 1 < len(self.lines):
-                    next_line = self.lines[i + 1].strip()
-                    if next_line.startswith("range"):
-                        parts = next_line.split()
-                        start = ipaddress.ip_address(parts[1])
-                        end = ipaddress.ip_address(parts[2])
-                        objects[name] = {"type": "range", "start": start, "end": end, "text": next_line}
-                        i += 1
-                    else:
-                        # object network без range → просто хранить строку
-                        objects[name] = {"type": "object", "text": line}
-                else:
-                    objects[name] = {"type": "object", "text": line}
-            i += 1
-        return objects
-
-    def get_object_group(self, group_name):
-        group_start = None
-        group_type = None
-        header_proto = "ip"
-
-        for i, line in enumerate(self.lines):
-            stripped = line.strip()
-            if stripped.startswith("object-group network ") and stripped.split()[-1] == group_name:
-                group_start = i
-                group_type = "network"
-                break
-            elif stripped.startswith("object-group service ") and group_name in stripped.split():
-                parts = stripped.split()
-                if parts[2] == group_name:
-                    group_start = i
-                    group_type = "service"
-                    if len(parts) >= 4:
-                        header_proto = parts[3].lower()
-                    break
-
-        if group_start is None:
-            if group_name in self.object_networks:
-                obj = self.object_networks[group_name]
-                return [{
-                    "text": obj["text"],
-                    "type": obj["type"],
-                    "network": obj.get("network"),
-                    "start": obj.get("start"),
-                    "end": obj.get("end")
-                }]
-            elif group_name in self.object_services:
-                return [{
-                    "text": "\n".join(self.object_services[group_name]),
-                    "type": "service_object",
-                    "lines": self.object_services[group_name]
-                }]
-            return []
-
-        objects = []
-        for line in self.lines[group_start + 1:]:
-            if not line.startswith(" "):
-                break
-            stripped = line.strip()
-            parts = stripped.split()
-
-            if group_type == "service":
-                # 1. service-object tcp/udp destination eq/range ...
-                if stripped.startswith("service-object"):
-                    proto = parts[1].lower() if len(parts) > 1 else "ip"
-
-                    # Динамически ищем позиции 'eq', 'range', 'gt', 'lt' в строке
-                    p_start, p_end = None, None
-
-                    if "eq" in parts:
-                        eq_idx = parts.index("eq")
-                        if eq_idx + 1 < len(parts):
-                            p_start = p_end = self._resolve_port(parts[eq_idx + 1])
-                    elif "range" in parts:
-                        rng_idx = parts.index("range")
-                        if rng_idx + 2 < len(parts):
-                            p_start = self._resolve_port(parts[rng_idx + 1])
-                            p_end = self._resolve_port(parts[rng_idx + 2])
-
-                    objects.append({
-                        "text": stripped,
-                        "type": "service",
-                        "proto": proto,
-                        "start_port": p_start,
-                        "end_port": p_end
-                    })
-
-                # 2. port-object eq/range ...
-                elif stripped.startswith("port-object"):
-                    p_start, p_end = None, None
-
-                    if "eq" in parts:
-                        eq_idx = parts.index("eq")
-                        if eq_idx + 1 < len(parts):
-                            p_start = p_end = self._resolve_port(parts[eq_idx + 1])
-                    elif "range" in parts:
-                        rng_idx = parts.index("range")
-                        if rng_idx + 2 < len(parts):
-                            p_start = self._resolve_port(parts[rng_idx + 1])
-                            p_end = self._resolve_port(parts[rng_idx + 2])
-
-                    objects.append({
-                        "text": stripped,
-                        "type": "service",
-                        "proto": header_proto,
-                        "start_port": p_start,
-                        "end_port": p_end
-                    })
-
-                # 3. group-object <ref_group>
-                elif stripped.startswith("group-object"):
-                    ref_group = parts[1]
-                    objects.append({
-                        "text": stripped,
-                        "type": "service_group_ref",
-                        "name": ref_group
-                    })
-
-            elif group_type == "network":
-                # ... стандартный разбор network-object ...
-                pass
-
-        return objects
-
-    def check_ip(self, objects, ip):
-        """
-        Подсвечивает объекты:
-          - host/network: если IP/сеть пересекается
-          - object_ref: если IP/сеть входит в объект в self.object_networks
-        Если ip пусто → выводим все объекты без BOLD
-        """
-        if not ip:
-            return [(obj["text"], False) for obj in objects]
-
-        # IP или сеть
-        try:
-            target = ipaddress.ip_network(ip, strict=False)
-        except ValueError:
-            try:
-                target = ipaddress.ip_network(ip + "/32")
-            except ValueError:
-                return [(obj["text"], False) for obj in objects]
-
-        result = []
-
-        for obj in objects:
-            match = False
-
-            # host/network
-            if obj["type"] in ["host", "network"]:
-                if target.overlaps(obj["network"]):
-                    match = True
-
-            # object_ref
-            elif obj["type"] == "object_ref":
-                name = obj["name"]
-                if name in self.object_networks:
-                    ref = self.object_networks[name]
-                    # range
-                    if ref["type"] == "range":
-                        if ref["start"] <= target.network_address <= ref["end"] or \
-                                ref["start"] <= target.broadcast_address <= ref["end"]:
-                            match = True
-                    # обычный object network (без range) → не подсвечивать
-                    # можно оставить match = False
-            # object network сам по себе (если группа = object network)
-            elif obj["type"] == "range":
-                if obj["start"] <= target.network_address <= obj["end"] or \
-                        obj["start"] <= target.broadcast_address <= obj["end"]:
-                    match = True
-
-            result.append((obj["text"], match))
-
-        return result
-    def _is_ip(self, s):
-        try:
-            ipaddress.ip_address(s)
-            return True
-        except ValueError:
-            return False
 
 class CiscoIOSXEParser:
 

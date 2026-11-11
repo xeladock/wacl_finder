@@ -13,6 +13,14 @@ from unpack_group_parser import (CiscoASAParserSVC, CiscoIOSXEParserSVC, CiscoFi
 from path import DATA_DIR
 BASE_DIR = DATA_DIR+"/config_files_clear"
 
+vm = {"Cisco ASA": CiscoASAParserSVC,
+      "Cisco IOS XE": CiscoIOSXEParserSVC,
+      "Cisco FXOS": CiscoFirepowerParserSVC,
+      "Cisco NX-OS": CiscoNexusParserSVC,
+      "FortiOS": FortigateParserSVC,
+      "Huawei VRP": HuaweiVRPParserSVC,
+      "Eltex ESR": EltexObjectGroupParserSVC,
+      "Cisco PIX": CiscoPIXParserSVC}
 
 def find_device_config(device):
 
@@ -31,30 +39,21 @@ def find_device_config(device):
 #
 # }
 
-detect_vendor_map={
-    "Cisco ASA": "cisco_asa",
-    "Cisco IOS XE": "cisco_ios_xe",
-    "Cisco FXOS" : "cisco_fxos",
-    "Cisco NX-OS" : "cisco_nxos",
-    "FortiOS" : "fortigate",
-    "Huawei VRP" : "huawei_vrp",
-    "Eltex ESR" : "eltex_esr",
-    "Cisco PIX" : "cisco_pix"
-}
+# detect_vendor_map={
+#     "Cisco ASA": "cisco_asa",
+#     "Cisco IOS XE": "cisco_ios_xe",
+#     "Cisco FXOS" : "cisco_fxos",
+#     "Cisco NX-OS" : "cisco_nxos",
+#     "FortiOS" : "fortigate",
+#     "Huawei VRP" : "huawei_vrp",
+#     "Eltex ESR" : "eltex_esr",
+#     "Cisco PIX" : "cisco_pix"
+# }
 
 def detect_vendor(path):
-    detect_vendor_map = {
-        "Cisco ASA": "cisco_asa",
-        "Cisco IOS XE": "cisco_ios_xe",
-        "Cisco FXOS": "cisco_fxos",
-        "Cisco NX-OS": "cisco_nxos",
-        "FortiOS": "fortigate",
-        "Huawei VRP": "huawei_vrp",
-        "Eltex ESR": "eltex_esr",
-        "Cisco PIX": "cisco_pix"
-    }
-    spath = path.split('/')[-2]
-    return detect_vendor_map.get(spath)
+
+    # spath =
+    return path.split('/')[-2]
 
 
 def get_object_group(device, group):
@@ -64,23 +63,25 @@ def get_object_group(device, group):
     if not path:
         return None, None, "Устройство не найдено."
 
-    vendor_map={
-        "cisco_asa":CiscoASAParserSVC,
-        "cisco_ios_xe":CiscoIOSXEParserSVC,
-        "cisco_fxos":CiscoFirepowerParserSVC,
-        "cisco_nxos":CiscoNexusParserSVC,
-        "fortigate":FortigateParserSVC,
-        "huawei_vrp":HuaweiVRPParserSVC,
-        "cisco_pix":CiscoPIXParserSVC,
-        "eltex_esr":EltexObjectGroupParserSVC
-    }
+    # vendor_map={
+    #     "cisco_asa":CiscoASAParserSVC,
+    #     "cisco_ios_xe":CiscoIOSXEParserSVC,
+    #     "cisco_fxos":CiscoFirepowerParserSVC,
+    #     "cisco_nxos":CiscoNexusParserSVC,
+    #     "fortigate":FortigateParserSVC,
+    #     "huawei_vrp":HuaweiVRPParserSVC,
+    #     "cisco_pix":CiscoPIXParserSVC,
+    #     "eltex_esr":EltexObjectGroupParserSVC
+    # }
+
+
 
     vendor = detect_vendor(path)
     # print("vendor is", vendor)
     with open(path, encoding="utf8", errors="ignore") as f:
         config = f.read()
 
-    parser=vendor_map.get(vendor)(config)
+    parser=vm.get(vendor)(config)
 
     if not parser:
         return None, None, "Вендор не поддерживается или не имеет функции object-group."

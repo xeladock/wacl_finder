@@ -15,6 +15,9 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from Api_search3 import main as parse_acl_main
 from unpack_group_gui import router as og_router
 from gui_fgpf_2 import router as nb_router
+from unpack_nat_gui import router as nat_router
+
+
 
 import os
 # from pathlib import Path
@@ -36,6 +39,7 @@ from path import APP_DIR, DATA_DIR
 app = FastAPI(title="ACL Search Tool")
 app.include_router(og_router)
 app.include_router(nb_router)
+app.include_router(nat_router)
 
 
 

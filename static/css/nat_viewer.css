@@ -14,13 +14,13 @@
     box-shadow: none;
     padding: 20px;
     box-sizing: border-box;
-    overflow: hidden !important;
+   /* overflow: hidden !important;*/
     display: flex !important;
     flex-direction: column !important;
 }
 
 html, body, .nat-main-card {
-    overflow: hidden !important;
+
 }
 
 html::-webkit-scrollbar,
@@ -210,7 +210,6 @@ body::-webkit-scrollbar,
     display: flex;
     flex-direction: column;
     gap: 20px;
-    overflow: hidden !important;
 }
 
 
