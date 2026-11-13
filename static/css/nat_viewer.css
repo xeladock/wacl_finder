@@ -227,7 +227,6 @@ body::-webkit-scrollbar,
 }
 
 
-
 .nat-section-title {
     font-size: 1.1rem;
     color: #1e293b;
@@ -339,4 +338,9 @@ body::-webkit-scrollbar,
     color: #ffffff;
     border-color: #2563eb;
     box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.placeholder-text {
+    margin-top: 60px; /* Сдвигает текст вниз на 50 пикселей (можно менять значение) */
+    text-align: center; /* Опционально: выровнять по центру, если нужно */
 }

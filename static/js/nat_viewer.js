@@ -47,7 +47,7 @@ function downloadResult() {
     const resultsContent = document.getElementById('nat-results-content');
     const outputText = resultsContent ? (resultsContent.innerText || resultsContent.textContent || "").trim() : "";
 
-    if (!outputText || outputText.includes("Результаты поиска появятся здесь")) {
+    if (!outputText || outputText.includes("\n\nРезультаты поиска появятся здесь")) {
         setTimeout(() => {
             alert("Нет данных для сохранения!");
         }, 30);

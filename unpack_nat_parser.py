@@ -40,7 +40,7 @@ class CiscoASA_NAT_Parser:
                         j += 1
                     if obj_items:
                         objects[name] = obj_items
-                        print(f"[PARSER OBJECTS] Объект '{name}' содержит сети: {[str(n) for n in obj_items]}")
+                        # print(f"[PARSER OBJECTS] Объект '{name}' содержит сети: {[str(n) for n in obj_items]}")
                     i = j - 1
             i += 1
         return objects

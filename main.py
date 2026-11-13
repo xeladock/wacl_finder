@@ -36,12 +36,21 @@ import os
 
 from path import APP_DIR, DATA_DIR
 
+
+
 app = FastAPI(title="ACL Search Tool")
 app.include_router(og_router)
 app.include_router(nb_router)
 app.include_router(nat_router)
 
-
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    # Логируем ошибку на сервере для отладки
+    print(f"GLOBAL EXCEPTION: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Внутренняя ошибка сервера: {str(exc)}"}
+    )
 
 app.mount("/static", StaticFiles(directory=os.path.join(APP_DIR, "static")), name="static")
 
@@ -135,7 +144,7 @@ async def search(request: SearchRequest):
 
             if vendors == ("Все",):
                 allowed_platforms = frozenset().union(*PLATFORM_GROUPS.values())
-                print("allowed_platforms in main:", allowed_platforms)
+                # print("allowed_platforms in main:", allowed_platforms)
             else:
                 allowed_platforms = frozenset().union(*(
                     PLATFORM_GROUPS[v] for v in vendors if v in PLATFORM_GROUPS
@@ -153,6 +162,8 @@ async def search(request: SearchRequest):
             if rsm:
                 fs = "Строгий поиск"
             else: fs = "Поиск"
+
+
 
             yield f"Выбранные УЭС: {', '.join(ues)}\nВыбранные регионы: {', '.join(regions)}\nВыбранные платформы: {', '.join(vendors)}\n\n"
 
@@ -325,7 +336,7 @@ async def export_excel(payload: list[dict]):
     ws.views.sheetView[0].showGridLines = True
 
     # 1. Заголовки таблицы (теперь всего 2 столбца)
-    headers = ["МРФ / Устройство", "Правило / Конфигурация (ACL / Term)"]
+    headers = ("МРФ / Устройство", "Правило / Конфигурация (ACL / Term)")
     ws.append(headers)
 
     # Стили заголовка
@@ -579,12 +590,24 @@ def get_error_html() -> str:
 async def custom_404_handler(request, exc):
     # Если путь начинается с /static/, отсылаем честную 404 ошибку,
     # чтобы случайно не загрузить главной страницей сломанный CSS/JS
-    if request.url.path.startswith("/static/"):
+    if request.url.path.startswith(("/static/","/api/")):
         return JSONResponse(status_code=404, content={"message": "Not Found"})
 
     # Все остальные несуществующие урлы перенаправляем на главный URL "/"
     return RedirectResponse(url="/", status_code=307)
 
+
+# @app.exception_handler(404)
+# async def custom_404_handler(request, exc):
+#     path = request.url.path
+#
+#     # Если это запрос к статике или к любому API (/api/nat/, /api/og/ и т.д.),
+#     # мы НЕ делаем редирект, а отдаем честный JSON/404, чтобы фронтенд поймал ошибку
+#     if path.startswith("/static/") or path.startswith("/api/"):
+#         return JSONResponse(status_code=404, content={"detail": "Ресурс или API эндпоинт не найден"})
+#
+#     # Для обычных страниц делаем редирект на корень
+#     return RedirectResponse(url="/", status_code=307)
 
 import uvicorn
 

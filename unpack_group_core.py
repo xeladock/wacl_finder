@@ -50,10 +50,10 @@ def find_device_config(device):
 #     "Cisco PIX" : "cisco_pix"
 # }
 
-def detect_vendor(path):
-
-    # spath =
-    return path.split('/')[-2]
+# def detect_vendor(path):
+#
+#     # spath =
+#     return os.path.basename(os.path.dirname(path))
 
 
 def get_object_group(device, group):
@@ -76,7 +76,7 @@ def get_object_group(device, group):
 
 
 
-    vendor = detect_vendor(path)
+    vendor = os.path.basename(os.path.dirname(path))
     # print("vendor is", vendor)
     with open(path, encoding="utf8", errors="ignore") as f:
         config = f.read()

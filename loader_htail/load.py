@@ -412,7 +412,11 @@ def main():
                 log("\nСоздание архива WBC завершено успешно...")
                 # print("\nСоздание архива WBC завершено успешно...")
             except:
-                log("\nОШИБКА. Создание архива WBC завершено неуспешно...")
+                if os.path.exists(ALTER_DIR):
+                        log("\nУдаляем папку alter_dirs по сбою");
+                        shutil.rmtree(ALTER_DIR, ignore_errors=True)
+                        sleep(1)
+                log("\nОШИБКА. Создание архива WBC завершено неуспешно. Удалили папку по сбою.")
                 # print("\nСоздание архива WBC завершено неуспешно...")
 
 
