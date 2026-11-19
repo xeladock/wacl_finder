@@ -132,7 +132,7 @@ async function performNATSearch() {
         resultsContent.innerHTML = '';
 
         if (!data.rules || data.rules.length === 0) {
-            resultsContent.innerHTML = '<div class="placeholder-text">Правила NAT не найдены по заданным критериям.</div>';
+            resultsContent.innerHTML = '<div class=><i>Совпадений не найдено.</i></div>';
             return;
         }
 

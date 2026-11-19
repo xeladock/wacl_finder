@@ -1,6 +1,6 @@
 # unpack_nat_core.py
 import os
-from unpack_nat_parser import CiscoASA_NAT_Parser, CiscoIOS_NAT_Parser, CiscoIOSXE_NAT_Parser, CiscoFXOS_NAT_Parser,Fortigate_NAT_Parser
+from unpack_nat_parser import (CiscoASA_NAT_Parser, CiscoIOS_NAT_Parser, CiscoIOSXE_NAT_Parser, CiscoFXOS_NAT_Parser,Fortigate_NAT_Parser,Juniper_NAT_Parser,Huawei_NAT_Parser, Eltex_NAT_Parser)
 from path import DATA_DIR
 BASE_DIR = DATA_DIR + "/config_files_clear"
 
@@ -83,6 +83,10 @@ def get_object_group(device):
         "Cisco IOS XE": CiscoIOSXE_NAT_Parser,
         "Cisco FXOS": CiscoFXOS_NAT_Parser,
         "FortiOS":Fortigate_NAT_Parser,
+        "Juniper Junos":Juniper_NAT_Parser,
+        "Huawei VRP":Huawei_NAT_Parser,
+        "Eltex":Eltex_NAT_Parser,
+        "Eltex ESR": Eltex_NAT_Parser,
         # При необходимости здесь можно добавить другие вендоры в будущем
     }
 

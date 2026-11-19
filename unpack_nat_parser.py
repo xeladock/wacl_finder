@@ -1112,6 +1112,573 @@ class Fortigate_NAT_Parser:
                 return int(range_str) == port
         except ValueError:
             return False
+
+
+
+class Juniper_NAT_Parser:
+    def __init__(self, config_text: str):
+        self.config_text = config_text
+        self.lines = config_text.splitlines()
+        self.pools = self._parse_juniper_pools()
+
+    def _parse_juniper_pools(self):
+        """Парсит пулы Juniper (source/destination pools) для использования в поиске, но не выводит их как правила"""
+        pools = {}
+        curr_pool = None
+        i = 0
+        n = len(self.lines)
+
+        while i < n:
+            line = self.lines[i].strip()
+            # Ищем объявления pool имя_пула {
+            if line.startswith("pool ") and line.endswith("{"):
+                curr_pool = line.split()[1]
+                pools[curr_pool] = []
+                i += 1
+                brace_count = 1
+                while i < n and brace_count > 0:
+                    sub_line = self.lines[i].strip()
+                    if "{" in sub_line:
+                        brace_count += sub_line.count("{")
+                    if "}" in sub_line:
+                        brace_count -= sub_line.count("}")
+                        if brace_count <= 0:
+                            break
+
+                    # Ищем IP-адреса внутри адресов пула
+                    parts = sub_line.replace(";", "").split()
+                    for p in parts:
+                        try:
+                            net = ipaddress.ip_network(p, strict=False)
+                            pools[curr_pool].append(net)
+                        except ValueError:
+                            pass
+                    i += 1
+            i += 1
+        return pools
+
+    def parse_all_nat_rules(self):
+        """Парсит rule-set и отдельные правила NAT в Juniper"""
+        rules = []
+        i = 0
+        n = len(self.lines)
+
+        current_rule_set = None
+        rule_set_from = "inside"
+        rule_set_to = "outside"
+
+        while i < n:
+            line = self.lines[i].strip()
+
+            # Отслеживаем rule-set
+            if line.startswith("rule-set ") and line.endswith("{"):
+                current_rule_set = line.split()[1]
+                rule_set_from = "inside"
+                rule_set_to = "outside"
+                i += 1
+                brace_count = 1
+
+                # Парсим содержимое rule-set
+                while i < n and brace_count > 0:
+                    sub_line = self.lines[i].strip()
+
+                    if sub_line.startswith("from "):
+                        rule_set_from = sub_line.replace("from", "").replace(";", "").strip()
+                    elif sub_line.startswith("to "):
+                        rule_set_to = sub_line.replace("to", "").replace(";", "").strip()
+
+                    if "{" in sub_line:
+                        brace_count += sub_line.count("{")
+                    if "}" in sub_line:
+                        brace_count -= sub_line.count("}")
+                        if brace_count <= 0:
+                            break
+
+                    # Находим отдельное правилонутри rule-set: rule имя_правила {
+                    if sub_line.startswith("rule ") and sub_line.endswith("{"):
+                        rule_name = sub_line.split()[1]
+                        rule_block_lines = [sub_line]
+
+                        r_idx = i + 1
+                        r_brace = 1
+                        while r_idx < n and r_brace > 0:
+                            r_line = self.lines[r_idx].strip()
+                            if "{" in r_line:
+                                r_brace += r_line.count("{")
+                            if "}" in r_line:
+                                r_brace -= r_line.count("}")
+                                if r_brace <= 0:
+                                    rule_block_lines.append(r_line)
+                                    break
+                            rule_block_lines.append(r_line)
+                            r_idx += 1
+
+                        block_text = "\n".join(rule_block_lines)
+                        block_lower = block_text.lower()
+
+                        # Определяем тип NAT и направление
+                        if "destination-nat" in block_lower:
+                            nat_type = "Juniper Destination NAT"
+                            real_interface = "outside"
+                            mapped_interface = "inside"
+                        elif "source-nat" in block_lower:
+                            nat_type = "Juniper Source NAT"
+                            real_interface = "inside"
+                            mapped_interface = "outside"
+                        elif "static-nat" in block_lower:
+                            nat_type = "Juniper Static NAT"
+                            real_interface = "outside"
+                            mapped_interface = "inside"
+                        else:
+                            nat_type = "Juniper NAT Rule"
+                            real_interface = rule_set_from
+                            mapped_interface = rule_set_to
+
+                        rules.append({
+                            "line_number": i + 1,
+                            "nat_type": nat_type,
+                            "real_interface": real_interface,
+                            "mapped_interface": mapped_interface,
+                            "raw_line": block_text,
+                            "details": block_text
+                        })
+
+                        i = r_idx
+                    i += 1
+            i += 1
+
+        return rules
+
+    def rule_matches_query(self, rule, query_str: str) -> bool:
+        """Интеллектуальный поиск для Juniper (текст, подсети/IP с учетом пулов, порты)"""
+        if not query_str or query_str.lower() == "any":
+            return True
+
+        query_lower = query_str.lower().strip()
+        block_text = rule.get("raw_line", "").lower()
+
+        # 1. Поиск по портам (например, tcp/3389 или просто 3389)
+        is_port_query = False
+        target_proto = None
+        target_port = None
+
+        if "/" in query_lower and not any(c in query_lower for c in ". "):
+            parts = query_lower.split("/")
+            if len(parts) == 2 and parts[0] in ["tcp", "udp"] and parts[1].isdigit():
+                target_proto = parts[0]
+                target_port = int(parts[1])
+                is_port_query = True
+        elif query_lower.isdigit():
+            target_port = int(query_lower)
+            is_port_query = True
+
+        if is_port_query:
+            # Проверяем протокол, если задан
+            if target_proto and target_proto not in block_text:
+                return False
+
+            # Ищем числовой порт в блоке правила (например, в destination-port)
+            words = block_text.replace('[', ' ').replace(']', ' ').replace(';', ' ').split()
+            for i, word in enumerate(words):
+                if word.isdigit() and int(word) == target_port:
+                    return True
+            return False
+
+        # 2. Поиск по IP / подсетям (включая проверку через упомянутые пулы)
+        try:
+            target_net = ipaddress.ip_network(query_lower, strict=False)
+
+            # Проверяем пулы, если они упомянуты в тексте правила
+            for pool_name, nets in self.pools.items():
+                if pool_name.lower() in block_text:
+                    for net in nets:
+                        if target_net.overlaps(net):
+                            return True
+
+            # Проверяем адреса прямо в тексте правила (включая списки в квадратных скобках)
+            words = block_text.replace('[', ' ').replace(']', ' ').replace(';', ' ').split()
+            for word in words:
+                try:
+                    word_net = ipaddress.ip_network(word, strict=False)
+                    if target_net.overlaps(word_net):
+                        return True
+                except ValueError:
+                    pass
+            return False
+        except ValueError:
+            pass
+
+        # 3. Общий текстовый поиск (имена правил, пулов, интерфейсы)
+        if query_lower in block_text:
+            return True
+
+        return False
+
+
+
+class Huawei_NAT_Parser:
+    def __init__(self, config_text: str):
+        self.config_text = config_text
+        self.lines = config_text.splitlines()
+
+    def parse_all_nat_rules(self):
+        rules = []
+        i = 0
+        n = len(self.lines)
+
+        while i < n:
+            raw_line = self.lines[i].strip()
+
+            # Пропускаем пустые строки, комментарии и заведомо нерелевантный системный мусор
+            if not raw_line or raw_line.startswith('#') or \
+                    raw_line.startswith("ip route-static") or \
+                    raw_line.startswith("proxy-policy") or \
+                    raw_line.startswith("pcp-policy") or \
+                    raw_line.startswith("firewall zone") or \
+                    raw_line == "aaa" or \
+                    raw_line.startswith("ikev") or raw_line.startswith("ipsec"):
+                i += 1
+                continue
+
+            # 1. Каждая команда "nat server" — это самостоятельное правило DNAT
+            if raw_line.startswith("nat server"):
+                rules.append({
+                    "line_number": i + 1,
+                    "nat_type": "Huawei NAT Server (DNAT)",
+                    "real_interface": "outside",
+                    "mapped_interface": "inside",
+                    "raw_line": raw_line,
+                    "details": raw_line
+                })
+                i += 1
+                continue
+
+            # 2. Обработка правил политик NAT (rule name ...)
+            if raw_line.startswith("rule name"):
+                rule_lines = [raw_line]
+                is_disabled = False
+                has_nat_action = False
+
+                src_zone = "inside"
+                dst_zone = "outside"
+
+                j = i + 1
+                while j < n:
+                    sub_line = self.lines[j].strip()
+
+                    # Если встретили границу следующего правила, пустую строку или блок — останавливаемся
+                    if sub_line.startswith("rule name") or sub_line.startswith("#") or \
+                            sub_line.startswith("nat server") or sub_line.startswith("interface") or \
+                            sub_line.startswith("ip route-static"):
+                        break
+
+                    if sub_line == "disable":
+                        is_disabled = True
+
+                    if sub_line.startswith("source-zone"):
+                        parts = sub_line.split()
+                        if len(parts) > 1:
+                            src_zone = parts[1]
+
+                    if sub_line.startswith("destination-zone"):
+                        parts = sub_line.split()
+                        if len(parts) > 1:
+                            dst_zone = parts[1]
+
+                    if "action nat" in sub_line:
+                        has_nat_action = True
+
+                    rule_lines.append(sub_line)
+                    j += 1
+
+                block_text = "\n".join(rule_lines)
+
+                # Учитываем только активные правила, у которых есть реальный NAT (action nat ...)
+                if not is_disabled and has_nat_action:
+                    if "easy-ip" in block_text:
+                        nat_type = "Huawei NAT (Easy IP / SNAT)"
+                    elif "address-group" in block_text:
+                        nat_type = "Huawei NAT (Address Group / SNAT)"
+                    else:
+                        nat_type = "Huawei NAT Policy"
+
+                    rules.append({
+                        "line_number": i + 1,
+                        "nat_type": nat_type,
+                        "real_interface": src_zone,
+                        "mapped_interface": dst_zone,
+                        "raw_line": block_text,
+                        "details": block_text
+                    })
+
+                i = j - 1
+            i += 1
+
+        return rules
+
+    def rule_matches_query(self, rule, query_str: str) -> bool:
+        """Интеллектуальный поиск для Huawei (текст, IP с масками, порты)"""
+        if not query_str or query_str.lower() == "any":
+            return True
+
+        query_lower = query_str.lower().strip()
+        block_text = rule.get("raw_line", "").lower()
+
+        # 1. Текстовый поиск (если не порт и не IP)
+        if "/" not in query_lower and not query_lower.isdigit():
+            if query_lower in block_text:
+                return True
+
+        # 2. Поиск по порту
+        is_port_query = False
+        target_port = None
+        if "/" in query_lower and not any(c in query_lower for c in ". "):
+            parts = query_lower.split("/")
+            if len(parts) == 2 and parts[1].isdigit():
+                target_port = int(parts[1])
+                is_port_query = True
+        elif query_lower.isdigit():
+            target_port = int(query_lower)
+            is_port_query = True
+
+        if is_port_query:
+            words = block_text.replace(";", "").split()
+            for w in words:
+                if w.isdigit() and int(w) == target_port:
+                    return True
+            return False
+
+        # 3. Поиск по IP / подсетям (с учетом масок Huawei вида ip mask)
+        try:
+            target_net = ipaddress.ip_network(query_lower, strict=False)
+            tokens = block_text.replace("mask", "").split()
+            i = 0
+            while i < len(tokens):
+                token = tokens[i]
+                try:
+                    net = ipaddress.ip_network(token, strict=False)
+                    if target_net.overlaps(net):
+                        return True
+                except ValueError:
+                    if i + 1 < len(tokens):
+                        try:
+                            masked_str = f"{token}/{tokens[i + 1]}"
+                            net = ipaddress.ip_network(masked_str, strict=False)
+                            if target_net.overlaps(net):
+                                return True
+                        except ValueError:
+                            pass
+                i += 1
+            return False
+        except ValueError:
+            pass
+
+        return False
+
+
+
+class Eltex_NAT_Parser:
+    def __init__(self, config_text: str):
+        self.config_text = config_text
+        self.lines = config_text.splitlines()
+        self.net_objects, self.net_groups = self._parse_eltex_objects()
+        self.pools = self._parse_eltex_pools()
+
+    def _parse_eltex_objects(self):
+        """Парсит многострочные сетевые объекты и группы объектов Eltex ESR"""
+        objects = {}
+        groups = {}
+        i = 0
+        n = len(self.lines)
+
+        while i < n:
+            line = self.lines[i].strip()
+            if line.startswith("object-group network"):
+                parts = line.split()
+                if len(parts) >= 3:
+                    obj_name = parts[2].lower()  # Приводим к lower для точного поиска
+                elif len(parts) == 2:
+                    obj_name = parts[1].lower()
+                else:
+                    i += 1
+                    continue
+
+                nets = []
+                tokens = line.replace(";", "").split()
+                for idx, t in enumerate(tokens):
+                    if t in ["ip", "prefix"] and idx + 1 < len(tokens):
+                        try:
+                            net = ipaddress.ip_network(tokens[idx + 1], strict=False)
+                            nets.append(net)
+                        except ValueError:
+                            pass
+
+                # Читаем тело объекта до 'exit' или следующего блока
+                j = i + 1
+                while j < n:
+                    sub_line = self.lines[j].strip()
+                    if sub_line == "exit" or sub_line.startswith("object-group") or sub_line.startswith("nat source"):
+                        break
+
+                    sub_tokens = sub_line.replace(";", "").split()
+                    for idx, t in enumerate(sub_tokens):
+                        if t in ["ip", "prefix"] and idx + 1 < len(sub_tokens):
+                            try:
+                                net = ipaddress.ip_network(sub_tokens[idx + 1], strict=False)
+                                nets.append(net)
+                            except ValueError:
+                                pass
+                    j += 1
+
+                if nets:
+                    objects[obj_name] = nets
+                    groups[obj_name] = nets
+                i = j
+            i += 1
+        return objects, groups
+
+    def _parse_eltex_pools(self):
+        """Парсит пулы nat source"""
+        pools = {}
+        curr_pool = None
+        in_nat_source = False
+
+        for line in self.lines:
+            line_str = line.strip()
+            if line_str.startswith("nat source"):
+                in_nat_source = True
+                continue
+            if in_nat_source and line_str == "exit" and not curr_pool:
+                break
+
+            if in_nat_source:
+                if line_str.startswith("pool ") and "{" in line_str:
+                    curr_pool = line_str.split()[1].lower()
+                    pools[curr_pool] = []
+                elif curr_pool:
+                    if line_str == "}":
+                        curr_pool = None
+                    else:
+                        parts = line_str.replace(";", "").split()
+                        for p in parts:
+                            try:
+                                net = ipaddress.ip_network(p, strict=False)
+                                pools[curr_pool].append(net)
+                            except ValueError:
+                                pass
+        return pools
+
+    def parse_all_nat_rules(self):
+        """Надежный парсер правил nat source в Eltex ESR"""
+        rules = []
+        i = 0
+        n = len(self.lines)
+        in_nat_source = False
+
+        while i < n:
+            line = self.lines[i].strip()
+
+            if line.startswith("nat source"):
+                in_nat_source = True
+                i += 1
+                continue
+
+            if in_nat_source and line.startswith("rule "):
+                rule_lines = [line]
+                is_enabled = False
+
+                j = i + 1
+                while j < n:
+                    sub_line = self.lines[j].strip()
+                    if sub_line == "enable":
+                        is_enabled = True
+                    rule_lines.append(sub_line)
+                    if sub_line == "exit":
+                        break
+                    j += 1
+
+                block_text = "\n".join(rule_lines)
+                block_lower = block_text.lower()
+
+                # Учитываем только включенные правила без disable
+                if is_enabled and "disable" not in block_lower:
+                    if "netmap" in block_lower:
+                        nat_type = "Eltex Source NAT (Netmap)"
+                    elif "off" in block_lower:
+                        nat_type = "Eltex Source NAT (Bypass / Off)"
+                    elif "interface" in block_lower:
+                        nat_type = "Eltex Source NAT (Interface / Overload)"
+                    else:
+                        nat_type = "Eltex Source NAT Rule"
+
+                    rules.append({
+                        "line_number": i + 1,
+                        "nat_type": nat_type,
+                        "real_interface": "inside",
+                        "mapped_interface": "outside",
+                        "raw_line": block_text,
+                        "details": block_text
+                    })
+
+                i = j
+            i += 1
+
+        return rules
+
+    def rule_matches_query(self, rule, query_str: str) -> bool:
+        """Интеллектуальный поиск для Eltex ESR с распаковкой объектов и подсетей"""
+        if not query_str or query_str.lower() == "any":
+            return True
+
+        query_lower = query_str.lower().strip()
+        block_text = rule.get("raw_line", "").lower()
+
+        # 1. Поиск по порту
+        if "/" not in query_lower and query_lower.isdigit():
+            target_port = int(query_lower)
+            words = block_text.replace(";", "").split()
+            for w in words:
+                if w.isdigit() and int(w) == target_port:
+                    return True
+
+        # 2. Поиск по IP / подсетям с распаковкой объектов, групп и пулов
+        try:
+            target_net = ipaddress.ip_network(query_lower, strict=False)
+            words = block_text.replace(";", "").split()
+
+            for word in words:
+                if word in self.net_groups:
+                    for net in self.net_groups[word]:
+                        if target_net.overlaps(net):
+                            return True
+                if word in self.net_objects:
+                    for net in self.net_objects[word]:
+                        if target_net.overlaps(net):
+                            return True
+                if word in self.pools:
+                    for net in self.pools[word]:
+                        if target_net.overlaps(net):
+                            return True
+
+            for word in words:
+                try:
+                    net = ipaddress.ip_network(word, strict=False)
+                    if target_net.overlaps(net):
+                        return True
+                except ValueError:
+                    pass
+            return False
+        except ValueError:
+            pass
+
+        # 3. Общий текстовый поиск
+        if query_lower in block_text:
+            return True
+
+        return False
+
+
+
 # class CiscoIOS_NAT_Parser2:
 #     def __init__(self, config_text: str):
 #         self.config_text = config_text
