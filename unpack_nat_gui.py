@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from path import DATA_DIR
 from unpack_nat_core import get_object_group
+from fastapi.responses import FileResponse
 # from unpack_nat_core import detect_vendor as dv
 BASE_DIR = DATA_DIR + "/config_files_clear"
 from unpack_nat_parser import CiscoASA_NAT_Parser
@@ -51,3 +52,11 @@ async def search_nat_rules(req: NatSearchRequest):
         "total_found": len(matched_rules),
         "rules": matched_rules
     }
+
+page_router = APIRouter(tags=["Pages"])
+@router.get("/nat_viewer_exp.html")
+async def get_nat_exp_page():
+    # Определяем абсолютный путь к папке со скриптом и поднимаемся к static
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_path, "static", "html", "nat_viewer_exp.html") # или "static", "html", "nat_viewer_exp.html"
+    return FileResponse(file_path)

@@ -155,10 +155,18 @@ async function performNATSearch() {
             // Метаданные (Тип правила, строка конфига, интерфейсы)
             const metaInfo = document.createElement('div');
             metaInfo.style.cssText = 'display: flex; justify-content: space-between; font-size: 12px; color: #64748b;';
-            metaInfo.innerHTML = `
-                <span><b>#${index + 1}</b>  | Тип: <span style="color: #0284c7; font-weight: 600;">${rule.nat_type}</span></span>
-                <span>Направление: <b>${rule.real_interface || '?'}</b> ➔ <b>${rule.mapped_interface || '?'}</b></span>
-            `;
+//            metaInfo.innerHTML = `
+//                <span><b>#${index + 1}</b> data-line="${rule.line_number}" | Тип: <span style="color: #0284c7; font-weight: 600;">${rule.nat_type}</span></span>
+//                <span>Направление: <b>${rule.real_interface || '?'}</b> ➔ <b>${rule.mapped_interface || '?'}</b></span>
+//            `;
+metaInfo.innerHTML = `
+    <span>
+        <a href="javascript:void(0);" class="rule-detail-link" data-rule-index="${index + 1}" data-line="${rule.line_number}" style="color: #2563eb; text-decoration: underline; font-weight: bold;">#${index + 1}</a>
+        | Тип: <span style="color: #0284c7; font-weight: 600;">${rule.nat_type}</span>
+    </span>
+    <span>Направление: <b>${rule.real_interface || '?'}</b> ➔ <b>${rule.mapped_interface || '?'}</b></span>
+`;
+
             ruleRow.appendChild(metaInfo);
 
             // Оригинальная строка конфига
@@ -215,3 +223,38 @@ document.addEventListener('keydown', function(e) {
         openHelp();
     }
 });
+
+// Слушаем клики внутри контейнера со списком результатов
+const resultsContentEl = document.getElementById('nat-results-content');
+if (resultsContentEl) {
+    resultsContentEl.addEventListener('click', function(event) {
+        const link = event.target.closest('.rule-detail-link');
+        if (!link) return;
+
+        event.preventDefault();
+
+        const lineNum = link.getAttribute('data-line');
+        const ruleIndex = link.getAttribute('data-rule-index');
+        const deviceName = document.getElementById('nat-device')?.value.trim() || '';
+
+        const url = `/api/nat/nat_viewer_exp.html?device=${encodeURIComponent(deviceName)}&line=${lineNum}&index=${ruleIndex}`;
+
+        // Жесткие параметры размеров и центрирования принудительно открывают отдельное окно в Chrome/Opera
+        const width = 1000;
+        const height = 750;
+        const left = Math.round((window.screen.width / 2) - (width / 2));
+        const top = Math.round((window.screen.height / 2) - (height / 2));
+        const uniqueWindowName = 'NatExpViewerWindow_' + ruleIndex + '_' + Date.now();
+
+        const newWindow = window.open(
+            url,
+            uniqueWindowName,
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no`
+        );
+
+        // На случай, если у пользователя в Chrome жестко включено "всегда открывать в новых вкладках"
+        if (newWindow) {
+            newWindow.focus();
+        }
+    });
+}
