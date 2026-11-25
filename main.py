@@ -314,6 +314,12 @@ async def get_nat_viewer():
         return HTMLResponse(content=get_error_html(), status_code=503)
     return FileResponse("static/html/nat_viewer.html")
 
+
+# main.py (или ваш файл с роутами FastAPI)
+from exp_nat_parser import parse_device_config, expand_object_name  # Импортируем наш парсер
+
+
+
 @app.get("/help", response_class=HTMLResponse)
 async def get_help():
     return FileResponse("static/html/help.html")

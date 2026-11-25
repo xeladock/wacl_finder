@@ -258,3 +258,7 @@ if (resultsContentEl) {
         }
     });
 }
+
+const ruleIndex = link.getAttribute('data-rule-index'); // например, "10"
+// Передаем index в параметрах URL
+const url = `/api/nat/nat_viewer_exp.html?device=${encodeURIComponent(deviceName)}&line=${lineNum}&index=${ruleIndex}`;

@@ -3,54 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NAT Viewer</title>
-    <!-- Подключаем базовые стили и специфичные стили NAT Viewer -->
+    <title>NAT Viewer - Детали правила</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/nat_viewer_exp.css">
 </head>
 <body class="nat-page-body">
-<!-- Панель результатов: SNAT и DNAT блоки -->
-<div class="nat-results-panel">
-    <!-- Блок SNAT -->
-    <div class="nat-section-block">
-        <h3 class="nat-section-title">Source NAT (SNAT)</h3>
-        <div class="nat-dual-grid">
-            <div class="nat-sub-box">
-                <span class="nat-box-label">Original (Source)</span>
-                <div id="snat-original" class="nat-box-content">
-                    <p class="placeholder-text">Ожидание запроса...</p>
+
+    <div class="nat-main-card">
+        <h2 id="page-title">🔀 NAT Rule Details</h2>
+
+        <!-- Кнопка Сохранить -->
+        <div class="nat-save-container">
+            <button onclick="downloadResult()" id="nat-save-btn" class="nat-btn-save" title="Сохранить результат">💾</button>
+        </div>
+
+        <!-- Панель результатов: SNAT и DNAT блоки -->
+        <div class="nat-results-panel">
+            <div id="nat-results-content">
+
+                <!-- Блок SNAT -->
+                <div class="nat-section-block">
+                    <h3 class="nat-section-title">Source NAT (SNAT)</h3>
+                    <div class="nat-dual-grid">
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Original (Source)</span>
+                            <div id="snat-original" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Translated (Post-NAT)</span>
+                            <div id="snat-translated" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="nat-sub-box">
-                <span class="nat-box-label">Translated (Post-NAT)</span>
-                <div id="snat-translated" class="nat-box-content">
-                    <p class="placeholder-text">Ожидание запроса...</p>
+
+                <!-- Блок DNAT -->
+                <div class="nat-section-block">
+                    <h3 class="nat-section-title">Destination NAT (DNAT)</h3>
+                    <div class="nat-dual-grid">
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Translated (Pre-NAT)</span>
+                            <div id="dnat-original" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                        <div class="nat-sub-box">
+                            <span class="nat-box-label">Original (Destination)</span>
+                            <div id="dnat-translated" class="nat-box-content">
+                                <p class="placeholder-text">Ожидание запроса...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Блок DNAT -->
-    <div class="nat-section-block">
-        <h3 class="nat-section-title">Destination NAT (DNAT)</h3>
-        <div class="nat-dual-grid">
-            <div class="nat-sub-box">
-                <span class="nat-box-label">Translated (Pre-NAT)</span>
-                <div id="dnat-original" class="nat-box-content">
-                    <p class="placeholder-text">Ожидание запроса...</p>
-                </div>
-            </div>
-            <div class="nat-sub-box">
-                <span class="nat-box-label">Original (Destination)</span>
-                <div id="dnat-translated" class="nat-box-content">
-                    <p class="placeholder-text">Ожидание запроса...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-    <!-- Подключаем скрипт логики -->
     <script src="/static/js/nat_viewer_exp.js"></script>
 </body>
 </html>

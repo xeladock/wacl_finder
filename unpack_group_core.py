@@ -31,50 +31,12 @@ def find_device_config(device):
     return None
 
 
-# VENDOR_MAP = {
-#     "Cisco ASA": CiscoASAParser,
-#     "Cisco IOS XE": CiscoIOSXEParser,
-#     "Cisco FXOS": CiscoFirepowerParser,
-#     "Cisco NX-OS": CiscoNexusParser,
-#
-# }
-
-# detect_vendor_map={
-#     "Cisco ASA": "cisco_asa",
-#     "Cisco IOS XE": "cisco_ios_xe",
-#     "Cisco FXOS" : "cisco_fxos",
-#     "Cisco NX-OS" : "cisco_nxos",
-#     "FortiOS" : "fortigate",
-#     "Huawei VRP" : "huawei_vrp",
-#     "Eltex ESR" : "eltex_esr",
-#     "Cisco PIX" : "cisco_pix"
-# }
-
-# def detect_vendor(path):
-#
-#     # spath =
-#     return os.path.basename(os.path.dirname(path))
-
-
 def get_object_group(device, group):
 
     path = find_device_config(device)
     # print("path is", path)
     if not path:
         return None, None, "Устройство не найдено."
-
-    # vendor_map={
-    #     "cisco_asa":CiscoASAParserSVC,
-    #     "cisco_ios_xe":CiscoIOSXEParserSVC,
-    #     "cisco_fxos":CiscoFirepowerParserSVC,
-    #     "cisco_nxos":CiscoNexusParserSVC,
-    #     "fortigate":FortigateParserSVC,
-    #     "huawei_vrp":HuaweiVRPParserSVC,
-    #     "cisco_pix":CiscoPIXParserSVC,
-    #     "eltex_esr":EltexObjectGroupParserSVC
-    # }
-
-
 
     vendor = os.path.basename(os.path.dirname(path))
     # print("vendor is", vendor)
@@ -91,20 +53,5 @@ def get_object_group(device, group):
     return parser, objects, None
 
 
-# def get_object_group(device, group):
-#     path = find_device_config(device)
-#     print(path)
-#     if not path:
-#         return None, "Device not found"
-#     vendor = detect_vendor(path)
-#     with open(path, encoding="utf8", errors="ignore") as f:
-#         config = f.read()
-#     if vendor == "cisco_asa":
-#         parser = CiscoASAParser(config)
-#     elif vendor == "huawei_vrp":
-#         parser = HuaweiVRPParser(config)
-#     else:
-#         return None, "Unsupported vendor"
-#     objects = parser.get_object_group(group)
-#     return objects, None
+
 
