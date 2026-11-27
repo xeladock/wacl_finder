@@ -50,14 +50,16 @@ class CiscoASA_NAT_Parser:
         for idx, line in enumerate(self.lines):
             line_str = line.strip()
 
+            # Пропускаем строки, если правило явно помечено как неактивное (inactive)
+            if "inactive" in line_str.lower():
+                continue
+
             # 1. Обрабатываем глобальные Twice NAT (которые содержат source или destination)
             if line_str.startswith("nat ("):
                 if "source" in line_str or "destination" in line_str:
                     rule_info = self._parse_twice_nat_line(line_str, idx + 1)
                     if rule_info:
                         rules.append(rule_info)
-                # Внимание: «голые» строки nat (...) вне блоков объектов мы теперь намеренно игнорируем,
-                # так как они дублируют правила из object network и не содержат информации об исходном IP/объекте.
 
             # 2. Обрабатываем Object NAT строго внутри блоков object network
             elif line_str.startswith("object network"):
@@ -67,14 +69,15 @@ class CiscoASA_NAT_Parser:
                 j = idx + 1
                 while j < len(self.lines) and self.lines[j].startswith(" "):
                     sub_line = self.lines[j].strip()
-                    if sub_line.startswith("nat ("):
+
+                    # Проверяем вложенную строку NAT на наличие inactive
+                    if sub_line.startswith("nat (") and "inactive" not in sub_line.lower():
                         rule_info = self._parse_object_nat_line(obj_name, sub_line, j, idx + 1)
                         if rule_info:
                             rules.append(rule_info)
                     j += 1
 
         return rules
-
     def rule_matches_query(self, rule, query_str):
         """Интеллектуальный поиск: текст, IP/подсети и порты (например, tcp/443)"""
         if not query_str:

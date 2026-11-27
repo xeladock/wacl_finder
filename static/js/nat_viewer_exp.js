@@ -35,3 +35,9 @@ async function loadRuleDetails(device, line) {
         console.error('Ошибка при загрузке деталей правила:', err);
     }
 }
+
+setInterval(function () {
+    if (!window.opener || window.opener.closed) {
+        window.close();
+    }
+}, 2000);

@@ -1,6 +1,8 @@
 const MIN_WIDTH = 600;
 const MIN_HEIGHT = 680;
 
+
+
 window.addEventListener('resize', () => {
     if (window.outerWidth < MIN_WIDTH || window.outerHeight < MIN_HEIGHT) {
         const targetWidth = Math.max(window.outerWidth, MIN_WIDTH);
@@ -225,6 +227,19 @@ document.addEventListener('keydown', function(e) {
 });
 
 // Слушаем клики внутри контейнера со списком результатов
+
+// Глобальная переменная для хранения ссылки на дочернее окно деталей
+let detailWindow = null;
+
+// Закрываем дочернее окно при закрытии материнской страницы
+window.addEventListener('beforeunload', function () {
+    if (detailWindow && !detailWindow.closed) {
+        detailWindow.close();
+    }
+});
+
+// Слушаем клики внутри контейнера со списком результатов
+// Слушаем клики внутри контейнера со списком результатов
 const resultsContentEl = document.getElementById('nat-results-content');
 if (resultsContentEl) {
     resultsContentEl.addEventListener('click', function(event) {
@@ -233,28 +248,31 @@ if (resultsContentEl) {
 
         event.preventDefault();
 
-        const lineNum = link.getAttribute('data-line');
+        // Безопасно получаем lineNum с фоллбэком на ruleIndex, если line не определен
+        let lineNum = link.getAttribute('data-line');
         const ruleIndex = link.getAttribute('data-rule-index');
         const deviceName = document.getElementById('nat-device')?.value.trim() || '';
 
+        if (!lineNum || lineNum === 'undefined' || lineNum === 'null') {
+            lineNum = ruleIndex;
+        }
+
         const url = `/api/nat/nat_viewer_exp.html?device=${encodeURIComponent(deviceName)}&line=${lineNum}&index=${ruleIndex}`;
 
-        // Жесткие параметры размеров и центрирования принудительно открывают отдельное окно в Chrome/Opera
         const width = 1000;
         const height = 750;
         const left = Math.round((window.screen.width / 2) - (width / 2));
         const top = Math.round((window.screen.height / 2) - (height / 2));
-        const uniqueWindowName = 'NatExpViewerWindow_' + ruleIndex + '_' + Date.now();
+        const windowName = 'NatExpViewerWindow';
 
-        const newWindow = window.open(
+        detailWindow = window.open(
             url,
-            uniqueWindowName,
+            windowName,
             `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no`
         );
 
-        // На случай, если у пользователя в Chrome жестко включено "всегда открывать в новых вкладках"
-        if (newWindow) {
-            newWindow.focus();
+        if (detailWindow) {
+            detailWindow.focus();
         }
     });
 }

@@ -353,6 +353,14 @@ class CiscoASAParserSVC:
                             "name": parts[2]
                         })
 
+                # ДОБАВЛЯЕМ ОБРАБОТКУ group-object для сети:
+                elif line_str.startswith("group-object") and len(parts) >= 2:
+                    objects.append({
+                        "text": line_str,
+                        "type": "object_ref",  # или отдельный тип, обрабатываемый рекурсивно
+                        "name": parts[1]
+                    })
+
             elif group_type == "service":
                 if line_str.startswith("service-object"):
                     parsed_svc = self._parse_service_object(line_str)
@@ -1079,12 +1087,22 @@ class CiscoFirepowerParserSVC:
                             i += k
                             break
                         elif nxt.startswith("range ") and len(parts) >= 3:
-                            start = ipaddress.ip_address(parts[1])
-                            end = ipaddress.ip_address(parts[2])
+                            try:
+                                start = ipaddress.ip_address(parts[1])
+                                end = ipaddress.ip_address(parts[2])
+                                objects[name] = {
+                                    "type": "range",
+                                    "start": start,
+                                    "end": end,
+                                    "text": nxt
+                                }
+                                i += k
+                                break
+                            except ValueError:
+                                pass
+                        elif nxt.startswith("fqdn ") and len(parts) >= 2:
                             objects[name] = {
-                                "type": "range",
-                                "start": start,
-                                "end": end,
+                                "type": "fqdn",
                                 "text": nxt
                             }
                             i += k
