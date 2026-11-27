@@ -1,6 +1,9 @@
 import ipaddress
 import re
 
+from fastapi import HTTPException
+
+
 class CiscoASA_NAT_Parser:
     def __init__(self, config_text):
         self.config = config_text
@@ -1681,58 +1684,317 @@ class Eltex_NAT_Parser:
         return False
 
 
+# =====
+# классы детализации.
 
-# class CiscoIOS_NAT_Parser2:
-#     def __init__(self, config_text: str):
-#         self.config_text = config_text
-#         self.lines = config_text.splitlines()
-#
-#     def parse_all_nat_rules(self):
-#         rules = []
-#
-#         # Регулярные выражения для Cisco IOS NAT
-#         static_pat = re.compile(r'^\s*(ip\s+nat\s+inside\s+source\s+static\s.+)', re.IGNORECASE)
-#         overload_pat = re.compile(r'^\s*(ip\s+nat\s+inside\s+source\s+list\s+.+)', re.IGNORECASE)
-#         pool_pat = re.compile(r'^\s*(ip\s+nat\s+pool\s.+)', re.IGNORECASE)
-#
-#         for line in self.lines:
-#             raw = line.strip()
-#             if not raw or raw.startswith('!'):
-#                 continue
-#
-#             nat_type = "Unknown"
-#             real_iface = None
-#             mapped_iface = None
-#
-#             if static_pat.match(raw):
-#                 nat_type = "Static NAT/PAT"
-#             elif overload_pat.match(raw):
-#                 nat_type = "Dynamic NAT/PAT (Overload)"
-#             elif pool_pat.match(raw):
-#                 nat_type = "NAT Pool"
-#             else:
-#                 continue
-#
-#             rules.append({
-#                 "nat_type": nat_type,
-#                 "real_interface": real_iface,
-#                 "mapped_interface": mapped_iface,
-#                 "raw_line": raw
-#             })
-#
-#         return rules
-#
-#     def rule_matches_query(self, rule, query: str) -> bool:
-#         """Интеллектуальный поиск (поддерживает IP, порты tcp/443, диапазоны и т.д.)"""
-#         if not query or query.lower() == "any":
-#             return True
-#
-#         raw = rule["raw_line"].lower()
-#         q = query.lower()
-#
-#         # Если поиск по протоколу и порту (например, tcp/10001 или tcp/https)
-#         if "/" in q:
-#             return q in raw
-#
-#         # Прямое вхождение подсети, IP или имени порта
-#         return q in raw
+from unpack_nat_parser import CiscoASA_NAT_Parser
+from unpack_group_parser import CiscoFirepowerParserSVC
+
+
+class Detail_FXOS_Parser:
+    def __init__(self, config_text: str):
+        self.config_text = config_text
+        self.nat_parser = CiscoASA_NAT_Parser(config_text)
+        # Подключаем специализированный парсер объектов и групп FXOS/Firepower
+        self.group_parser = CiscoFirepowerParserSVC(config_text)
+
+    def get_details(self, line_num: int):
+        all_rules = []
+        try:
+            if hasattr(self.nat_parser, "parse_all_nat_rules"):
+                all_rules = self.nat_parser.parse_all_nat_rules()
+        except Exception:
+            pass
+
+        # Ищем целевое правило по номеру строки
+        target_rule = None
+        for r in all_rules:
+            if r.get("line_number") == line_num or r.get("line") == line_num or r.get("index") == line_num:
+                target_rule = r
+                break
+
+        if not target_rule and all_rules:
+            idx = line_num - 1
+            if 0 <= idx < len(all_rules):
+                target_rule = all_rules[idx]
+            else:
+                target_rule = all_rules[0]
+
+        raw_line = ""
+        if target_rule:
+            raw_line = target_rule.get("raw_line") or target_rule.get("details") or ""
+
+        if not raw_line and self.config_text:
+            lines = self.config_text.splitlines()
+            if 0 <= line_num - 1 < len(lines):
+                raw_line = lines[line_num - 1].strip()
+
+        real_interface, mapped_interface = "", ""
+        intf_match = re.search(r'nat\s*\(([^,]+),\s*([^)]+)\)', raw_line)
+        if intf_match:
+            real_interface = intf_match.group(1).strip()
+            mapped_interface = intf_match.group(2).strip()
+
+        src_orig, src_trans, dst_orig, dst_trans = "", "", "", ""
+        try:
+            if target_rule:
+                src_orig = target_rule.get("src_orig", "")
+                src_trans = target_rule.get("src_trans", "")
+                dst_orig = target_rule.get("dst_orig", "")
+                dst_trans = target_rule.get("dst_trans", "")
+
+            # Учитываем after-auto / manual и ключевые слова Twice NAT
+            if not src_orig:
+                src_match = re.search(r'source\s+(?:static|dynamic|after-auto)\s+(\S+)(?:\s+(\S+))?', raw_line)
+                if src_match:
+                    src_orig = src_match.group(1) or ""
+                    src_trans = src_match.group(2) or ""
+
+            if not dst_orig:
+                dst_match = re.search(r'destination\s+(?:static|dynamic)\s+(\S+)\s+(\S+)', raw_line)
+                if dst_match:
+                    dst_orig = dst_match.group(1) or ""
+                    dst_trans = dst_match.group(2) or ""
+        except Exception:
+            pass
+
+        # Функция рекурсивной распаковки объектов и групп через CiscoFirepowerParserSVC
+        def resolve_obj(obj_name, is_translated_side=False):
+            obj_str = str(obj_name).strip()
+
+            # Если это ключевое слово any или явно указан прочерк — выводим как есть
+            if obj_str.lower() in ["any", "—", "-"]:
+                return [obj_str]
+
+            if obj_str.lower() == "interface" or not obj_str:
+                if is_translated_side and mapped_interface:
+                    return [f"dynamic interface ({mapped_interface})"]
+                return [obj_str if obj_str else "—"]
+
+            if not self.group_parser or not hasattr(self.group_parser, "get_object_group"):
+                return [obj_str]
+
+            # Получаем элементы объекта или object-group через встроенный метод парсера
+            unpacked = self.group_parser.get_object_group(obj_str)
+            if not unpacked:
+                return [obj_str]
+
+            res = []
+            for item in unpacked:
+                if isinstance(item, dict):
+                    # Обработка вложенных ссылок на объекты внутри групп
+                    if item.get("type") == "object_ref":
+                        sub_name = item.get("name")
+                        sub_unpacked = self.group_parser.get_object_group(sub_name)
+                        for sub_item in sub_unpacked:
+                            if isinstance(sub_item, dict):
+                                net_val = sub_item.get("network") or sub_item.get("text") or sub_item.get("ip")
+                                res.append(str(net_val) if net_val else str(sub_item))
+                            else:
+                                res.append(str(sub_item))
+                    else:
+                        net_val = item.get("network") or item.get("text") or item.get("ip")
+                        res.append(str(net_val) if net_val else str(item))
+                else:
+                    res.append(str(item))
+            return res if res else [obj_str]
+
+        def format_block(unpacked_list):
+            if not unpacked_list:
+                return "—"
+            clean_lines = [str(x).strip() for x in unpacked_list if str(x).strip()]
+            return "\n".join(clean_lines) if clean_lines else "—"
+
+        return {
+            "forms": {
+                "pre_snat": format_block(resolve_obj(src_orig, is_translated_side=False)),
+                "post_snat": format_block(resolve_obj(src_trans, is_translated_side=True)),
+                "pre_dnat": format_block(resolve_obj(dst_trans, is_translated_side=False)),
+                "post_dnat": format_block(resolve_obj(dst_orig, is_translated_side=False))
+            }
+        }
+
+
+import re
+from unpack_nat_parser import CiscoASA_NAT_Parser
+from unpack_group_parser import CiscoASAParserSVC  # Импортируем ваш сервисный класс для ASA
+
+
+class Detail_ASA_Parser:
+    def __init__(self, config_text: str):
+        self.config_text = config_text
+        self.nat_parser = CiscoASA_NAT_Parser(config_text)
+        # Подключаем специализированный парсер объектов/групп для ASA
+        self.group_parser = CiscoASAParserSVC(config_text)
+
+    def get_details(self, line_num: int):
+        all_rules = []
+        try:
+            if hasattr(self.nat_parser, "parse_all_nat_rules"):
+                all_rules = self.nat_parser.parse_all_nat_rules()
+        except Exception:
+            pass
+
+        # Ищем целевое правило по номеру строки
+        target_rule = None
+        for r in all_rules:
+            if r.get("line_number") == line_num or r.get("line") == line_num or r.get("index") == line_num:
+                target_rule = r
+                break
+
+        if not target_rule and all_rules:
+            idx = line_num - 1
+            if 0 <= idx < len(all_rules):
+                target_rule = all_rules[idx]
+            else:
+                target_rule = all_rules[0]
+
+        raw_line = ""
+        if target_rule:
+            raw_line = target_rule.get("raw_line") or target_rule.get("details") or ""
+
+        if not raw_line and self.config_text:
+            lines = self.config_text.splitlines()
+            if 0 <= line_num - 1 < len(lines):
+                raw_line = lines[line_num - 1].strip()
+
+        real_interface, mapped_interface = "", ""
+        intf_match = re.search(r'nat\s*\(([^,]+),\s*([^)]+)\)', raw_line)
+        if intf_match:
+            real_interface = intf_match.group(1).strip()
+            mapped_interface = intf_match.group(2).strip()
+
+        src_orig, src_trans, dst_orig, dst_trans = "", "", "", ""
+
+        try:
+            # 1. Классический Twice NAT (содержит source или destination)
+            if target_rule and ("source" in raw_line.lower() or "destination" in raw_line.lower()):
+                src_orig = target_rule.get("src_orig", "")
+                src_trans = target_rule.get("src_trans", "")
+                dst_orig = target_rule.get("dst_orig", "")
+                dst_trans = target_rule.get("dst_trans", "")
+
+                if not src_orig:
+                    src_match = re.search(r'source\s+(?:static|dynamic|after-auto)\s+(\S+)(?:\s+(\S+))?', raw_line)
+                    if src_match:
+                        src_orig = src_match.group(1) or ""
+                        src_trans = src_match.group(2) or ""
+
+                if not dst_orig:
+                    dst_match = re.search(r'destination\s+(?:static|dynamic)\s+(\S+)\s+(\S+)', raw_line)
+                    if dst_match:
+                        dst_orig = dst_match.group(1) or ""
+                        dst_trans = dst_match.group(2) or ""
+
+            # 2. Короткий Object NAT / PAT (внутри object network)
+                    # 2. Короткий Object NAT / PAT (внутри object network)
+            else:
+                        obj_name = ""
+                        if target_rule:
+                            obj_name = target_rule.get("object_name", "") or target_rule.get("name", "")
+
+                        if not obj_name and self.config_text:
+                            lines = self.config_text.splitlines()
+                            for i in range(max(0, line_num - 1), -1, -1):
+                                line_str = lines[i].strip()
+                                if line_str.startswith("object network"):
+                                    parts_obj = line_str.split()
+                                    if len(parts_obj) >= 3:
+                                        obj_name = parts_obj[2]
+                                        break
+                                if line_str.startswith("nat (") or line_str.startswith("access-list"):
+                                    break
+
+                        # Original Source — это имя объекта (например, подсеть 10.144.251.0/24),
+                        # которое функция resolve_obj красиво распакует через group_parser
+                        src_orig = obj_name if obj_name else (
+                            f"interface ({real_interface})" if real_interface else "interface")
+
+                        # Translated Source — то, что идет после слова static или dynamic
+                        parts = raw_line.split()
+                        try:
+                            if "static" in raw_line.lower():
+                                static_idx = parts.index("static")
+                                if static_idx + 1 < len(parts):
+                                    trans_ip = parts[static_idx + 1]
+                                    if "service" in raw_line.lower():
+                                        s_idx = parts.index("service")
+                                        if s_idx + 3 < len(parts):
+                                            proto = parts[s_idx + 1]
+                                            port_trans = parts[s_idx + 3]
+                                            src_trans = f"{trans_ip}:{port_trans} ({proto})"
+                                        else:
+                                            src_trans = trans_ip
+                                    else:
+                                        src_trans = trans_ip
+                            elif "dynamic" in raw_line.lower():
+                                dyn_idx = parts.index("dynamic")
+                                if dyn_idx + 1 < len(parts):
+                                    src_trans = parts[dyn_idx + 1]  # Здесь подтянется 83.239.46.162
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+        # Функция рекурсивной распаковки объектов и групп через CiscoASAParserSVC
+            # Функция рекурсивной распаковки объектов и групп через CiscoASAParserSVC
+        def resolve_obj(obj_name, is_translated_side=False):
+                obj_str = str(obj_name).strip()
+
+                if obj_str.lower() in ["any", "—", "-"]:
+                    return [obj_str]
+
+                if obj_str.lower() == "interface" or not obj_str:
+                    if is_translated_side and mapped_interface:
+                        return [f"dynamic interface ({mapped_interface})"]
+                    return [obj_str if obj_str else "—"]
+
+                if not self.group_parser or not hasattr(self.group_parser, "get_object_group"):
+                    return [obj_str]
+
+                unpacked = self.group_parser.get_object_group(obj_str)
+                if not unpacked:
+                    return [obj_str]
+
+                res = []
+                for item in unpacked:
+                    if isinstance(item, dict):
+                        # Безусловно игнорируем любые элементы, содержащие строки nat (...)
+                        text_val = str(item.get("text", "")).strip()
+                        if text_val.startswith("nat ("):
+                            continue
+
+                        if item.get("type") == "object_ref":
+                            sub_name = item.get("name")
+                            sub_unpacked = self.group_parser.get_object_group(sub_name)
+                            for sub_item in sub_unpacked:
+                                if isinstance(sub_item, dict):
+                                    sub_text = str(sub_item.get("text", "")).strip()
+                                    if sub_text.startswith("nat ("):
+                                        continue
+                                    net_val = sub_item.get("network") or sub_item.get("text") or sub_item.get("ip")
+                                    res.append(str(net_val) if net_val else str(sub_item))
+                                else:
+                                    res.append(str(sub_item))
+                        else:
+                            net_val = item.get("network") or item.get("text") or item.get("ip")
+                            res.append(str(net_val) if net_val else str(item))
+                    else:
+                        item_str = str(item).strip()
+                        if not item_str.startswith("nat ("):
+                            res.append(item_str)
+                return res if res else [obj_str]
+        def format_block(unpacked_list):
+            if not unpacked_list:
+                return "—"
+            clean_lines = [str(x).strip() for x in unpacked_list if str(x).strip()]
+            return "\n".join(clean_lines) if clean_lines else "—"
+
+        return {
+            "forms": {
+                "pre_snat": format_block(resolve_obj(src_orig, is_translated_side=False)),
+                "post_snat": format_block(resolve_obj(src_trans, is_translated_side=True)),
+                "pre_dnat": format_block(resolve_obj(dst_trans, is_translated_side=False)),
+                "post_dnat": format_block(resolve_obj(dst_orig, is_translated_side=False))
+            }
+        }
